@@ -436,8 +436,6 @@ async function main() {
       camera.position.copy(c.pos);
       camera.lookAt(c.look);
       if (u > 0.62) ui.showTitles(false);
-      // the citation starts being written on the ground as the camera comes down towards it
-      if (u > 0.55) words.revealEpigraph(now);
       if (u >= 1) endFlyover();
     }
 

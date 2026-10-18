@@ -93,7 +93,7 @@ export function codePigeon(outlines: boolean): PigeonModel {
   const animate = (p: PigeonPose) => {
     const { t } = p;
     if (p.mode === "fly") {
-      const rate = 7 + 9 * p.flap;
+      const rate = (7 + 9 * p.flap) / 2; // an unhurried wing beat
       const amp = 0.25 + 0.75 * p.flap;
       const a = Math.sin(t * rate) * amp;
       wings[0].rotation.set(0, 0, -a - 0.1);

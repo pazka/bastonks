@@ -215,30 +215,11 @@ export class PathWords {
       start: -1,
       speed: glyphs.length / 10.5, // the whole citation is traced in about ten seconds
       done: false,
-      // then a wobbly circle is drawn round it, closing the ring
-      after: (g, t) => {
-        if (t <= 0) return;
-        g.save();
-        g.strokeStyle = INK;
-        g.lineWidth = 6;
-        g.lineCap = "round";
-        g.globalAlpha = 0.8;
-        g.beginPath();
-        const end = t * Math.PI * 2;
-        for (let a = 0; a <= end; a += 0.02) {
-          const r = 960 + Math.sin(a * 7) * 6 + Math.sin(a * 23) * 3;
-          const x = C + Math.cos(a - Math.PI / 2) * r, y = C + Math.sin(a - Math.PI / 2) * r;
-          if (a === 0) g.moveTo(x, y);
-          else g.lineTo(x, y);
-        }
-        g.stroke();
-        g.restore();
-      },
     };
     this.group.add(drapedPlane(this.ring.tex, 10.4, 10.4, s, dir, 0.075));
   }
 
-  /** Starts tracing the epigraph (during the descent of the intro, or at once when it is skipped). */
+  /** Starts tracing the epigraph (when the intro ends, or is skipped). */
   revealEpigraph(now: number) {
     if (this.ring.start < 0) this.ring.start = now;
   }

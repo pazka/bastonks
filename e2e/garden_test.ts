@@ -102,7 +102,8 @@ Deno.test({
       assertEquals(panelTitle, s1.panelTitle);
       const kicker = await page.textContent("#panel .kicker");
       assert(kicker?.startsWith("Semaine du"), kicker ?? "");
-      assert((await page.textContent("#counter"))?.startsWith("1 / "));
+      // the counter shows what was found (the autopilot may perch on a neighbouring branch on its way)
+      assert((await page.textContent("#counter"))?.startsWith(`${s1.found} / `));
       // links in card content are never clickable
       assertEquals(await page.locator("#panel a").count(), 0);
       // Shift: one branch down (or the ground from the lowest one); the panel stays open
