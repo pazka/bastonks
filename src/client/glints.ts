@@ -73,6 +73,7 @@ export class Glints {
           float a = vState > 2.5 ? ring + core * 0.4 : (star + core) * 0.9;
           gl_FragColor = vec4(col, a * vAlpha);
           if (gl_FragColor.a < 0.01) discard;
+          #include <colorspace_fragment>
         }`,
     });
     this.points = new THREE.Points(g, m);

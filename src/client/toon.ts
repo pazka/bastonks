@@ -60,6 +60,7 @@ export function outlineMaterial(thickness: number, color = 0x2b2a33): THREE.Shad
       void main() {
         gl_FragColor = vec4(ink, 1.0);
         #include <fog_fragment>
+        #include <colorspace_fragment>
       }`,
     side: THREE.BackSide,
     fog: true,

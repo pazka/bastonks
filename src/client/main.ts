@@ -56,7 +56,9 @@ function makeSky(radius: number) {
       `varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
     fragmentShader: `uniform vec3 top; uniform vec3 horizon; varying vec3 vP;
       void main(){ float h = clamp(vP.y * 1.6 + 0.05, 0.0, 1.0); vec3 c = mix(horizon, top, pow(h, 0.7));
-      gl_FragColor = vec4(c, 1.0); }`,
+      gl_FragColor = vec4(c, 1.0);
+      #include <colorspace_fragment>
+      }`,
   });
   const sky = new THREE.Mesh(g, m);
   sky.frustumCulled = false;
