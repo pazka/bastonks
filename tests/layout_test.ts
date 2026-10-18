@@ -4,19 +4,11 @@ import { TUNING } from "../src/client/tuning.ts";
 import { cleanBoard, idPairs, makeHasher } from "../src/server/clean.ts";
 import { buildWorld } from "../src/server/classify.ts";
 import { syntheticBoard } from "./fixtures/synthetic.ts";
-import exceptional from "../config/exceptional.json" with { type: "json" };
 
 async function world() {
   const raw = syntheticBoard();
-  const h = await makeHasher(new Uint8Array(32), [
-    ...idPairs(raw),
-    ...exceptional.cards.map((id) => ["card", id] as [string, string]),
-  ]);
-  return buildWorld(
-    cleanBoard(raw, h).snapshot,
-    new Set(exceptional.cards.map((id) => h("card", id))),
-    false,
-  );
+  const h = await makeHasher(new Uint8Array(32), idPairs(raw));
+  return buildWorld(cleanBoard(raw, h).snapshot, false);
 }
 
 Deno.test("layout: deterministic, one slot per Tree, every item placed", async () => {
@@ -26,7 +18,6 @@ Deno.test("layout: deterministic, one slot per Tree, every item placed", async (
   assertEquals(a.trees.length, w.trees.length);
   assertEquals(a.trees.reduce((n, t) => n + t.branches.length, 0), w.counts.branches);
   assertEquals(a.pots.length, w.pots.length);
-  assertEquals(a.peanuts.length, w.exceptional.length);
 });
 
 Deno.test("layout: Trees do not overlap and taller Trees hold more Branches", async () => {

@@ -4,17 +4,15 @@ import { buildWorld } from "../src/server/classify.ts";
 import { hasMaskable } from "../src/server/mask.ts";
 import { checkWorld } from "../src/server/smoke.ts";
 import { FAKE_BOARD_ID, SEEDED_SECRETS, syntheticBoard } from "./fixtures/synthetic.ts";
-import exceptional from "../config/exceptional.json" with { type: "json" };
 
 const salt = new Uint8Array(32).fill(7);
 
 async function world() {
   const raw = syntheticBoard();
-  const pairs = [...idPairs(raw), ...exceptional.cards.map((id) => ["card", id] as [string, string])];
+  const pairs = idPairs(raw);
   const hash = await makeHasher(salt, pairs);
   const { snapshot, images } = cleanBoard(raw, hash, new Date("2026-10-18T00:00:00Z"));
-  const ex = new Set(exceptional.cards.map((id) => hash("card", id)));
-  return { raw, snapshot, images, world: buildWorld(snapshot, ex, false) };
+  return { raw, snapshot, images, world: buildWorld(snapshot, false) };
 }
 
 Deno.test("synthetic board has the real board's shape", () => {
@@ -108,7 +106,7 @@ Deno.test("classification: Weeks of the hand-typed lists", async () => {
   assertEquals(seasons.size, 4);
 });
 
-Deno.test("fruits, covers, checklists, exceptional", async () => {
+Deno.test("fruits, covers, checklists", async () => {
   const { world: w } = await world();
   assertEquals(w.species.map((s) => s.fruit), ["apple", "cherry", "plum", "pear", "lemon", "fig", "berries"]);
   const items = w.trees.flatMap((t) => t.branches);
@@ -117,7 +115,6 @@ Deno.test("fruits, covers, checklists, exceptional", async () => {
   assert(
     items.some((i) => i.checklist.some((c) => c.done)) && items.some((i) => i.checklist.some((c) => !c.done)),
   );
-  assertEquals(w.exceptional.length, exceptional.cards.length);
 });
 
 Deno.test("images: previews ≤ 1024 px, app URLs only for images", async () => {

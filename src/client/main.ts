@@ -7,13 +7,15 @@ import { buildForest, type WorldItem } from "./forest.ts";
 import { Glints, GlintState } from "./glints.ts";
 import { defaultLang, EPIGRAPH, fmtDate, lang, setLang, t } from "./i18n.ts";
 import { PathWords } from "./groundText.ts";
+import { Flutter } from "./particles.ts";
+import { Weather, WIND } from "./wind.ts";
 import { Input, type Intent } from "./input.ts";
 import { buildLayout, Grid, groundHeight, type Layout } from "./layout.ts";
 import { COLORS, SEASON_LEAVES } from "./palette.ts";
 import { codePigeon } from "./pigeon.ts";
-import { ChaseCamera, damp, Player } from "./player.ts";
+import { ChaseCamera, damp, type PerchPoint, Player } from "./player.ts";
 import { Progress } from "./progress.ts";
-import { boosted, TUNING } from "./tuning.ts";
+import { TUNING } from "./tuning.ts";
 import { UI } from "./ui.ts";
 
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -67,33 +69,26 @@ function makeSky(radius: number) {
   return sky;
 }
 
-function flyoverPath(layout: Layout, start: THREE.Vector3, end: THREE.Vector3): {
-  pos: THREE.CatmullRomCurve3;
-  look: THREE.CatmullRomCurve3;
-} {
-  const R = layout.radius;
-  const g = layout.greenhouse.center;
-  const pos = new THREE.CatmullRomCurve3(
-    [
-      new THREE.Vector3(-R * 0.9, R * 0.75, -R * 1.1),
-      new THREE.Vector3(R * 0.2, R * 0.55, -R * 0.9),
-      new THREE.Vector3(R * 0.85, R * 0.35, 0),
-      new THREE.Vector3(g.x * 0.8 + 6, 16, g.z * 0.8 + 6),
-      new THREE.Vector3(0, 14, 0).lerp(start, 0.5),
-      end,
-    ],
-    false,
-    "centripetal",
-  );
-  const look = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(0, 0, 0),
-    new THREE.Vector3(0, 0, 0),
-    new THREE.Vector3(g.x * 0.3, 0, g.z * 0.3),
-    new THREE.Vector3(g.x, 1, g.z),
-    start.clone().add(new THREE.Vector3(0, 1, 0)),
-    start.clone().add(new THREE.Vector3(0, 0.35, 0)),
-  ]);
-  return { pos, look };
+/**
+ * The intro: one slow spiral descending onto the pigeon. Starts high above, turns ~1.6 times around the
+ * starting point while coming down and closer, and ends exactly at the chase camera's first position.
+ */
+function spiralIntro(layout: Layout, start: THREE.Vector3, end: THREE.Vector3) {
+  const dx = end.x - start.x, dz = end.z - start.z;
+  const endAngle = Math.atan2(dx, dz), endR = Math.hypot(dx, dz);
+  const R0 = layout.radius * 0.8, H0 = layout.radius * 0.85;
+  const turns = 1.6;
+  const pos = new THREE.Vector3(), look = new THREE.Vector3();
+  return (u: number) => {
+    const e = u * u * (3 - 2 * u); // ease in and out
+    const k = 1 - e;
+    const a = endAngle + k * turns * Math.PI * 2;
+    const r = endR + (R0 - endR) * Math.pow(k, 1.25);
+    const h = end.y + (H0 - end.y) * Math.pow(k, 1.7);
+    pos.set(start.x + Math.sin(a) * r, h, start.z + Math.cos(a) * r);
+    look.set(start.x, start.y + 0.35 * e, start.z);
+    return { pos, look };
+  };
 }
 
 async function main() {
@@ -152,13 +147,6 @@ async function main() {
     new THREE.MeshBasicMaterial({ color: 0x2b3a2b, transparent: true, opacity: 0.25, depthWrite: false }),
   );
   scene.add(shadow);
-  const arrow = new THREE.Mesh(
-    new THREE.ConeGeometry(0.07, 0.22, 6).rotateX(Math.PI / 2),
-    new THREE.MeshBasicMaterial({ color: COLORS.peanut, transparent: true, opacity: 0.85 }),
-  );
-  arrow.visible = false;
-  scene.add(arrow);
-
   const words = new PathWords(layout, EPIGRAPH);
   scene.add(words.group);
 
@@ -172,9 +160,6 @@ async function main() {
   const newIds = new Set(isFirstVisit ? [] : allIds.filter((id) => !progress.seenBefore.has(id)));
   progress.startVisit(allIds);
   const total = items.length;
-  const peanutTotal = layout.peanuts.length;
-  const peanutIds = new Set(layout.peanuts.map((p) => p.id));
-  for (const id of [...progress.peanuts]) if (!peanutIds.has(id)) progress.peanuts.delete(id);
   const countFound = () => items.reduce((n, i) => n + (progress.found.has(i.item.id) ? 1 : 0), 0);
   items.forEach((it, i) => {
     glints.set(
@@ -185,9 +170,6 @@ async function main() {
         ? GlintState.New
         : GlintState.Unfound,
     );
-  });
-  layout.peanuts.forEach((p, i) => {
-    if (progress.peanuts.has(p.id)) forest.hidePeanut(i);
   });
   const newItems = items.filter((i) => newIds.has(i.item.id));
   forest.grow(newItems, 0);
@@ -200,13 +182,46 @@ async function main() {
   const audio = new SoundBoard(progress.muted);
   const input = new Input(canvas, document.getElementById("stick")!, document.getElementById("knob")!);
   const player = new Player(forest, layout.start, layout.startYaw);
-  player.boost = progress.boostLevel;
   player.onFlap = () => audio.wing();
-  player.onHop = () => audio.wing();
-  player.onLand = () => audio.land();
+  const flutter = new Flutter();
+  scene.add(flutter.mesh);
+  const weather = new Weather();
+  /** Leaf colours of the tree a Branch belongs to (falling leaves match their tree). */
+  const leafPalette = (it: WorldItem) =>
+    it.tree >= 0 ? SEASON_LEAVES[layout.trees[it.tree].tree.season] : [COLORS.sprout];
+  player.onHop = () => {
+    audio.wing();
+    if (player.perch) {
+      forest.bounce(player.perch.item, performance.now() / 1000);
+      flutter.burst(player.perch.item.p, 2, leafPalette(player.perch.item));
+    }
+  };
+  player.onLand = () => {
+    audio.land();
+    if (player.perch) {
+      // the branch takes the pigeon's weight: it swings, a few leaves let go, the foliage rustles
+      forest.bounce(player.perch.item, performance.now() / 1000);
+      flutter.burst(player.perch.item.p, 3 + Math.floor(Math.random() * 3), leafPalette(player.perch.item));
+      audio.rustle(0.6);
+    } else if (player.mode === "ground") {
+      flutter.burst(player.pos, 4, [COLORS.grassDark, COLORS.grass, 0xffffff, 0xffe08a], 1.2, 0.25);
+    }
+  };
   const chase = new ChaseCamera(camera);
 
-  const refreshCounter = () => ui.setCounter(countFound(), total, progress.peanuts.size, peanutTotal);
+  const applyMouse = () => {
+    input.lookX = progress.invertX ? -1 : 1;
+    input.lookY = progress.invertY ? -1 : 1;
+    ui.mouse = { x: progress.invertX, y: progress.invertY };
+  };
+  applyMouse();
+  ui.onMouseOption = (axis, inverted) => {
+    if (axis === "x") progress.invertX = inverted;
+    else progress.invertY = inverted;
+    progress.save();
+    applyMouse();
+  };
+  const refreshCounter = () => ui.setCounter(countFound(), total);
   const refreshTexts = () => {
     ui.refreshTexts(progress.muted);
     refreshCounter();
@@ -255,7 +270,7 @@ async function main() {
   player.pos.copy(startPos);
   chase.snapBehind(startPos, layout.startYaw);
   const camEnd = camera.position.clone();
-  const fly = flyoverPath(layout, startPos, camEnd);
+  const intro = spiralIntro(layout, startPos, camEnd);
   const flyDuration = reducedMotion
     ? TUNING.flyoverReduced
     : progress.visits > 0
@@ -301,7 +316,7 @@ async function main() {
     const nx = h > 0.01 ? dx / h : 0, nz = h > 0.01 ? dz / h : 0;
     const k = Math.min(1, h / 4);
     const my = (nx * fx + nz * fz) * k, mx = -(nx * fz - nz * fx) * k;
-    const there = target === autopilot;
+    const there = player.perch?.item === autopilot;
     const perchedElsewhere = player.mode === "perch" && !there;
     return {
       ...it,
@@ -315,7 +330,7 @@ async function main() {
     };
   };
 
-  // ---- inspect / found / peanuts --------------------------------------------------------------------
+  // ---- inspect / found --------------------------------------------------------------------
   let target: (WorldItem & { idx: number }) | null = null;
   let gesture = 0;
   /** The panel takes a hint of its tree's season (or of the Greenhouse). */
@@ -382,9 +397,9 @@ async function main() {
   let last = performance.now() / 1000;
   let growStart = Infinity;
   let fpsNow = 30;
-  const tmpV = new THREE.Vector3();
   let cooTimer = 20 + Math.random() * 30;
   let lastPerched: WorldItem | null = null;
+  let lastPot: WorldItem | null = null;
   const motion = reducedMotion ? 0.3 : 1;
 
   hook.state = () => ({
@@ -392,7 +407,6 @@ async function main() {
     pos: player.pos.toArray(),
     found: countFound(),
     total,
-    peanuts: progress.peanuts.size,
     panelOpen: ui.current !== null,
     panelTitle: ui.current?.item.name ?? null,
     target: target?.item.name ?? null,
@@ -401,7 +415,7 @@ async function main() {
     drawCalls: renderer.info.render.calls,
     autopilot: autopilot !== null,
     fps: Math.round(fpsNow),
-    epigraph: words.epigraphOpacity,
+    epigraph: words.epigraphProgress,
     dbg: autopilot ? { perch: (autopilot as WorldItem).perch, tip: (autopilot as WorldItem).p } : null,
   });
 
@@ -415,10 +429,12 @@ async function main() {
     if (inFlyover) {
       flyT += dt / flyDuration;
       const u = Math.min(1, flyT);
-      const e = u < 0.5 ? 2 * u * u : 1 - (-2 * u + 2) ** 2 / 2;
-      camera.position.copy(fly.pos.getPointAt(e));
-      camera.lookAt(fly.look.getPointAt(e));
-      if (u > 0.72) ui.showTitles(false);
+      const c = intro(u);
+      camera.position.copy(c.pos);
+      camera.lookAt(c.look);
+      if (u > 0.62) ui.showTitles(false);
+      // the citation starts being written on the ground as the camera comes down towards it
+      if (u > 0.55) words.revealEpigraph(now);
       if (u >= 1) endFlyover();
     }
 
@@ -448,25 +464,18 @@ async function main() {
     (shadow.material as THREE.MeshBasicMaterial).opacity = Math.max(0.05, 0.28 - hgt * 0.01);
 
     // nearest inspectable item
-    const range = boosted(TUNING.inspectRange, TUNING.boost.inspectRange, player.boost);
-    let best: (WorldItem & { idx: number }) | null = null, bd = Infinity;
-    if (!inFlyover) {
-      for (const c of itemGrid.near(player.pos, range, nearBuf)) {
-        const d = c.p.x === undefined
-          ? Infinity
-          : tmpV.set(c.p.x, c.p.y, c.p.z).distanceToSquared(player.pos);
-        if (d < bd) {
-          bd = d;
-          best = c;
-        }
-      }
+    // E: the closest Branch (unfound cards first) within reach — highlighted, the pigeon swoops to it
+    let best: PerchPoint | null = null;
+    if (!inFlyover && !player.hopping) {
+      best = player.closestPerch(TUNING.swoopRange, (pp) => progress.found.has(pp.item.item.id));
     }
-    if (best !== target) {
-      target = best;
-      glints.setTarget(best ? best.idx : -1);
+    const bestItem = best ? best.item as WorldItem & { idx: number } : null;
+    if (bestItem !== target) {
+      target = bestItem;
+      glints.setTarget(bestItem ? bestItem.idx : -1);
     }
-    ui.setPrompt(!!target && ui.current !== target, input.touchMode);
-    if (target && it.inspect) inspect(target);
+    ui.setPrompt(!!best, input.touchMode);
+    if (best && it.inspect) player.swoopTo(best);
     // perched on a Branch: its card opens by itself (and follows the pigeon from branch to branch)
     if (player.mode === "perch" && player.perch) {
       if (player.perch.item !== lastPerched) {
@@ -479,36 +488,26 @@ async function main() {
           chase.perchYaw = out + Math.PI - 0.6;
         } else chase.perchYaw = null;
       }
-    } else if (!player.hopping) lastPerched = null;
-
-    // peanuts
-    let nearestPeanut: THREE.Vector3 | null = null, pd = Infinity;
-    layout.peanuts.forEach((p, i) => {
-      if (progress.peanuts.has(p.id)) return;
-      const d = tmpV.set(p.pos.x, p.pos.y, p.pos.z).distanceTo(player.pos);
-      if (!inFlyover && d < TUNING.pickupRange) {
-        progress.peanuts.add(p.id);
-        forest.hidePeanut(i);
-        player.boost = progress.boostLevel;
-        progress.save();
-        audio.pickup();
-        ui.toast(t().peanut);
-        refreshCounter();
-        return;
+    } else if (!player.hopping) {
+      lastPerched = null;
+      // in the Greenhouse: the closest Seed Pot opens its card by itself as the pigeon walks by
+      if (!inFlyover && player.mode !== "fly") {
+        let pot: (WorldItem & { idx: number }) | null = null, pd = 1.7 * 1.7;
+        for (const c of itemGrid.near(player.pos, 1.7, nearBuf)) {
+          if (c.kind !== "pot") continue;
+          const d = (c.p.x - player.pos.x) ** 2 + (c.p.z - player.pos.z) ** 2;
+          if (d < pd) {
+            pd = d;
+            pot = c;
+          }
+        }
+        // once per approach: closing the panel next to the same pot keeps it closed
+        if (pot !== lastPot) {
+          lastPot = pot;
+          if (pot) inspect(pot);
+        }
       }
-      if (d < pd) {
-        pd = d;
-        nearestPeanut = new THREE.Vector3(p.pos.x, p.pos.y, p.pos.z);
-      }
-    });
-    // Boost: a sense of the nearest peanut's direction
-    const np = nearestPeanut as THREE.Vector3 | null;
-    if (np && player.boost > 0 && !inFlyover) {
-      arrow.visible = true;
-      const dir = tmpV.copy(np).sub(player.pos).normalize();
-      arrow.position.copy(player.pos).addScaledVector(dir, 0.7).add(new THREE.Vector3(0, 0.55, 0));
-      arrow.lookAt(np);
-    } else arrow.visible = false;
+    }
 
     // coo now and then when idle on the ground or a perch
     cooTimer -= dt;
@@ -525,12 +524,27 @@ async function main() {
       forest.grow(newItems, (now - growStart) / (reducedMotion ? 0.6 : 2.5));
     }
     forest.update(time, dt);
-    if (!inFlyover) words.update(now, player.pos, (week) => `${t().week} ${fmtDate(week)}`);
-    else words.update(now, new THREE.Vector3(1e6, 0, 0), () => "");
+    // wind, and the pigeon's touch on grass and foliage
+    weather.update(dt, time);
+    WIND.uPigeon.value.copy(player.pos);
+    const moving = player.hopping ? 1 : Math.min(1, player.speed / 3);
+    WIND.uPigeonMove.value += (moving - WIND.uPigeonMove.value) * Math.min(1, dt * 4);
+    audio.setWind(weather.gust);
+    if (!inFlyover && player.mode === "fly" && player.speed > 1.5) {
+      // brushing through a leaf cluster: leaves let go, and it rustles
+      for (const c of itemGrid.near(player.pos, 1.1, nearBuf)) {
+        if (c.kind !== "branch") continue;
+        if (Math.random() < dt * 6) flutter.burst(player.pos, 1, leafPalette(c));
+        if (Math.random() < dt * 3) audio.rustle(0.4);
+        break;
+      }
+    }
+    flutter.update(dt);
+    words.update(now, inFlyover ? null : player.pos, (week) => `${t().week} ${fmtDate(week)}`);
     glints.update(
       time,
       player.pos,
-      boosted(TUNING.glintRange, TUNING.boost.glintRange, player.boost),
+      TUNING.glintRange,
       motion,
     );
 

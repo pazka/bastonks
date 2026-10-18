@@ -17,10 +17,9 @@ export const EPIGRAPH = [
 const STRINGS = {
   fr: {
     found: (n: string, t: string) => `${n} / ${t} trouvés`,
-    peanuts: (n: number, t: number) => `${n} / ${t} cacahuètes`,
     skip: "Passer",
-    inspect: "Inspecter",
-    inspectKey: "E — inspecter",
+    inspect: "Se poser",
+    inspectKey: "E — se poser sur la branche la plus proche",
     close: "Fermer",
     about: "À propos",
     help: "Commandes",
@@ -42,7 +41,6 @@ const STRINGS = {
     greenhouse: "Serre",
     inProgress: "En cours",
     newGrowth: "Nouvelle pousse",
-    peanut: "Cacahuète dorée ! Le pigeon se sent plus vif.",
     complete: "Tout est trouvé. Merci d'avoir parcouru ce travail.",
     fruits: {
       apple: "pomme",
@@ -56,9 +54,13 @@ const STRINGS = {
     controlsDesktop: [
       ["ZQSD / WASD / flèches", "marcher, voler"],
       ["Espace", "s'envoler, battre des ailes ; perché : branche du dessus (tout en haut : s'envoler)"],
-      ["Maj", "descendre ; perché : branche du dessous (tout en bas : au sol)"],
-      ["E / Entrée", "inspecter (se poser sur une branche l'ouvre aussi)"],
+      ["Maj ou Ctrl", "descendre ; perché : branche du dessous (tout en bas : au sol)"],
+      [
+        "E / Entrée",
+        "se poser sur la branche la plus proche (d'abord celles pas encore lues) ; la carte s'ouvre",
+      ],
       ["Souris (glisser)", "tourner la caméra"],
+      ["Molette", "rapprocher / éloigner la caméra"],
       ["Échap", "fermer le panneau"],
     ],
     controlsTouch: [
@@ -70,7 +72,7 @@ const STRINGS = {
     aboutBody: [
       "Ce jardin a poussé à partir du tableau Trello sur lequel Salomé Klein a tenu le travail de sa thèse.",
       "Chaque arbre est une semaine de travail terminé ; chaque branche, une carte ; chaque fruit, une étiquette. Le chemin suit le temps, de 2023 à 2026. Dans la serre poussent les travaux encore en cours.",
-      "Vous êtes un pigeon. Posez-vous, lisez, et laissez-vous surprendre par les cacahuètes dorées.",
+      "Vous êtes un pigeon. Posez-vous, lisez, et prenez votre temps.",
     ],
     credits: "Crédits",
     creditsBody: [
@@ -80,13 +82,17 @@ const STRINGS = {
       "Un cadeau d'Alexandre.",
     ],
     progressNote: "Votre progression est gardée dans ce navigateur uniquement.",
+    mouse: "Souris",
+    invertX: "Inverser l'axe horizontal",
+    invertY: "Inverser l'axe vertical",
+    ctrlNote:
+      "Astuce : Ctrl fait comme Maj (pratique pour descendre plusieurs branches). Attention, Ctrl + W ferme l'onglet.",
   },
   en: {
     found: (n: string, t: string) => `${n} / ${t} found`,
-    peanuts: (n: number, t: number) => `${n} / ${t} peanuts`,
     skip: "Skip",
-    inspect: "Inspect",
-    inspectKey: "E — inspect",
+    inspect: "Perch",
+    inspectKey: "E — perch on the closest branch",
     close: "Close",
     about: "About",
     help: "Controls",
@@ -108,7 +114,6 @@ const STRINGS = {
     greenhouse: "Greenhouse",
     inProgress: "In progress",
     newGrowth: "New growth",
-    peanut: "Golden peanut! The pigeon feels livelier.",
     complete: "Everything is found. Thank you for walking through this work.",
     fruits: {
       apple: "apple",
@@ -122,9 +127,10 @@ const STRINGS = {
     controlsDesktop: [
       ["WASD / ZQSD / arrows", "walk, fly"],
       ["Space", "take off, flap; perched: the branch above (from the top: take off)"],
-      ["Shift", "descend; perched: the branch below (from the lowest: the ground)"],
-      ["E / Enter", "inspect (landing on a branch opens it too)"],
+      ["Shift or Ctrl", "descend; perched: the branch below (from the lowest: the ground)"],
+      ["E / Enter", "perch on the closest branch (unread ones first); its card opens"],
       ["Mouse (drag)", "turn the camera"],
+      ["Wheel", "zoom the camera in / out"],
       ["Esc", "close the panel"],
     ],
     controlsTouch: [
@@ -136,7 +142,7 @@ const STRINGS = {
     aboutBody: [
       "This garden grew from the Trello board on which Salomé Klein kept the work of her PhD.",
       "Each tree is a week of finished work; each branch, a card; each fruit, a label. The path follows time, from 2023 to 2026. In the greenhouse grows the work still in progress.",
-      "You are a pigeon. Land, read, and let the golden peanuts surprise you.",
+      "You are a pigeon. Land, read, and take your time.",
     ],
     credits: "Credits",
     creditsBody: [
@@ -146,6 +152,11 @@ const STRINGS = {
       "A gift from Alexandre.",
     ],
     progressNote: "Your progress is kept in this browser only.",
+    mouse: "Mouse",
+    invertX: "Invert horizontal axis",
+    invertY: "Invert vertical axis",
+    ctrlNote:
+      "Tip: Ctrl works like Shift (handy to go down several branches). Careful, Ctrl + W closes the tab.",
   },
 };
 

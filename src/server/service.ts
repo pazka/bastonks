@@ -13,7 +13,6 @@ export interface ServiceDeps {
   store: Store;
   fetchBoard: (signal: AbortSignal) => Promise<RawBoard>;
   fetchImage: (url: string, signal: AbortSignal) => Promise<Uint8Array<ArrayBuffer>>;
-  exceptionalTrelloIds: string[];
   fetchTimeoutMs: number;
   minRefetchS: number;
   /** Hard limit of one background board fetch. */
@@ -42,7 +41,6 @@ export interface Health {
 export class WorldService {
   private snapshot: CleanSnapshot | null = null;
   private snapshotAt = 0; // ms of the last successful fetch (or of the stored snapshot)
-  private exceptional = new Set<string>();
   private images: ImageSources = new Map();
   private inflight: Promise<boolean> | null = null;
   private lastOutcome: FetchOutcome | "none" = "none";
@@ -64,21 +62,14 @@ export class WorldService {
     this.salt = await this.d.store.salt();
     const snap = await this.d.store.loadSnapshot();
     if (snap) {
-      this.setSnapshot(snap, await this.exceptionalIds([]));
+      this.setSnapshot(snap);
       this.snapshotAt = Date.parse(snap.fetchedAt) || 0;
       log("info", "snapshot loaded", { cards: snap.cards.length, at: snap.fetchedAt });
     }
   }
 
-  private async exceptionalIds(extra: [string, string][]) {
-    const pairs = this.d.exceptionalTrelloIds.map((id) => ["card", id] as [string, string]);
-    const h = await makeHasher(this.salt!, [...pairs, ...extra]);
-    return { hash: h, ids: new Set(this.d.exceptionalTrelloIds.map((id) => h("card", id))) };
-  }
-
-  private setSnapshot(s: CleanSnapshot, ex: { ids: Set<string> }) {
+  private setSnapshot(s: CleanSnapshot) {
     this.snapshot = s;
-    this.exceptional = ex.ids;
     this.rendered.clear();
   }
 
@@ -98,13 +89,13 @@ export class WorldService {
     const timer = setTimeout(() => ctl.abort(), this.d.backgroundTimeoutMs ?? 20_000);
     try {
       const raw = await this.d.fetchBoard(ctl.signal);
-      const ex = await this.exceptionalIds(idPairs(raw));
-      const { snapshot, images } = cleanBoard(raw, ex.hash, new Date(this.now()));
+      const hash = await makeHasher(this.salt!, idPairs(raw));
+      const { snapshot, images } = cleanBoard(raw, hash, new Date(this.now()));
       const changed = !this.snapshot || !sameContent(this.snapshot, snapshot);
       // Unchanged content keeps the same snapshot (and ETag); `snapshotAt` still records this fetch.
       if (changed) {
         await this.d.store.saveSnapshot(snapshot);
-        this.setSnapshot(snapshot, ex);
+        this.setSnapshot(snapshot);
       }
       this.images = images;
       this.snapshotAt = this.now();
@@ -157,7 +148,7 @@ export class WorldService {
     if (!this.snapshot) return null;
     const hit = this.rendered.get(stale);
     if (hit) return hit;
-    const world = buildWorld(this.snapshot, this.exceptional, stale);
+    const world = buildWorld(this.snapshot, stale);
     const body = new TextEncoder().encode(JSON.stringify(world));
     const r: Rendered = { body, etag: `"${fnv(body)}"`, world };
     this.rendered.set(stale, r);

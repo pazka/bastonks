@@ -36,7 +36,6 @@ async function setup(fake: Fake, dir?: string, fetchTimeoutMs = 2000) {
       fake.imageCalls++;
       return Promise.resolve(gradientPng(32, 24));
     },
-    exceptionalTrelloIds: ["63c0a1f0aaaaaaaaaaaa0001"],
     fetchTimeoutMs,
     minRefetchS: 0,
   });
@@ -49,7 +48,6 @@ Deno.test("visit: fresh world when Trello answers", async () => {
   const { svc } = await setup(fake);
   const r = await svc.visit();
   assert(r && !r.world.stale);
-  assertEquals(r.world.exceptional.length, 1);
   assertEquals(svc.health().status, "ok");
   assertEquals(svc.health().last_fetch, "ok");
   await svc.settle();

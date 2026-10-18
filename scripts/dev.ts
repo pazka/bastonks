@@ -1,7 +1,6 @@
 // Local dev / e2e server: the real server code, fed by the synthetic board instead of Trello.
 // `deno task build && deno task dev` → http://127.0.0.1:8000. Never used in production.
 
-import exceptional from "../config/exceptional.json" with { type: "json" };
 import { loadAssets } from "../src/server/assets.ts";
 import { makeHandler } from "../src/server/http.ts";
 import { WorldService } from "../src/server/service.ts";
@@ -23,7 +22,6 @@ const svc = new WorldService({
     return Promise.resolve(structuredClone(board));
   },
   fetchImage: (url) => Promise.resolve(gradientPng(320, 240, url.length % 5)),
-  exceptionalTrelloIds: exceptional.cards,
   fetchTimeoutMs: 3000,
   minRefetchS: 10,
 });

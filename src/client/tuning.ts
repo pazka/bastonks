@@ -1,4 +1,4 @@
-// Tuning values (BRIEF §11: boost strengths and peanut count are set in playtesting). One place, on purpose.
+// Tuning values (feel, set in playtesting). One place, on purpose.
 
 export const TUNING = {
   // Pigeon movement
@@ -17,21 +17,11 @@ export const TUNING = {
   // Glints on unfound items
   glintRange: 14,
 
-  // Per Golden Peanut (Boost level n multiplies by 1 + n × k, capped)
-  boost: {
-    glintRange: 0.6,
-    flySpeed: 0.12,
-    inspectRange: 0.15,
-    climbReach: 0.2,
-    maxLevel: 6,
-  },
+  /** E: the pigeon swoops to the closest Branch within this range (unfound ones first). */
+  swoopRange: 16,
 
   // Flyover durations (s)
-  flyoverFirst: 16,
-  flyoverReturn: 7,
-  flyoverReduced: 4,
+  flyoverFirst: 24,
+  flyoverReturn: 12,
+  flyoverReduced: 5,
 } as const;
-
-export function boosted(base: number, k: number, level: number): number {
-  return base * (1 + k * Math.min(level, TUNING.boost.maxLevel));
-}

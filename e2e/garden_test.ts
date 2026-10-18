@@ -5,7 +5,6 @@
 
 import { assert, assertEquals } from "@std/assert";
 import { chromium } from "playwright-core";
-import exceptional from "../config/exceptional.json" with { type: "json" };
 import { loadAssets } from "../src/server/assets.ts";
 import { makeHandler } from "../src/server/http.ts";
 import { setLogLevel } from "../src/server/log.ts";
@@ -27,7 +26,6 @@ Deno.test({
       store: new Store(await Deno.makeTempDir()),
       fetchBoard: () => Promise.resolve(structuredClone(board)),
       fetchImage: () => Promise.resolve(gradientPng(64, 48)),
-      exceptionalTrelloIds: exceptional.cards,
       fetchTimeoutMs: 3000,
       minRefetchS: 60,
     });
@@ -78,7 +76,7 @@ Deno.test({
         timeout: 10_000,
       });
       assert(await page.isVisible("#counter"));
-      // the epigraph fades in at the beginning of the Path, then stays
+      // the epigraph is traced in a ring on the ground where the pigeon starts, then stays
       await page.waitForFunction(() => (globalThis as any).__bastonks.state().epigraph > 0.5, null, {
         timeout: 20_000,
       });

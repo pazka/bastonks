@@ -35,7 +35,7 @@ function toItem(c: CleanCard, labelIndex: Map<string, number>): Item {
   };
 }
 
-export function buildWorld(snap: CleanSnapshot, exceptionalIds: ReadonlySet<string>, stale: boolean): World {
+export function buildWorld(snap: CleanSnapshot, stale: boolean): World {
   const species: Species[] = snap.labels.map((l, i) => ({
     name: l.name,
     color: l.color,
@@ -83,10 +83,6 @@ export function buildWorld(snap: CleanSnapshot, exceptionalIds: ReadonlySet<stri
   }
   trees.sort((a, b) => (a.week < b.week ? -1 : a.week > b.week ? 1 : a.pos - b.pos));
 
-  const present = new Set<string>();
-  for (const t of trees) for (const b of t.branches) present.add(b.id);
-  for (const p of pots) present.add(p.id);
-
   const branches = trees.reduce((n, t) => n + t.branches.length, 0);
   return {
     snapshotAt: snap.fetchedAt,
@@ -94,7 +90,6 @@ export function buildWorld(snap: CleanSnapshot, exceptionalIds: ReadonlySet<stri
     species,
     trees: trees.map(({ pos: _pos, ...t }) => t),
     pots,
-    exceptional: [...exceptionalIds].filter((id) => present.has(id)),
     counts: { trees: trees.length, branches, pots: pots.length },
   };
 }

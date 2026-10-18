@@ -36,18 +36,12 @@ export interface PotLayout {
   pos: V3;
 }
 
-export interface Peanut {
-  id: string;
-  pos: V3;
-}
-
 export interface Layout {
   trees: TreeLayout[];
   pots: PotLayout[];
   /** Centre line of the Path, sampled every ~1.5 units. */
   path: V3[];
   greenhouse: { center: V3; w: number; d: number; h: number; yaw: number; door: V3 };
-  peanuts: Peanut[];
   start: V3;
   startYaw: number;
   radius: number;
@@ -125,7 +119,7 @@ function layoutTree(tree: Tree, index: number, pos: V3): TreeLayout {
   const { height, trunkR, crownR } = treeShape(n);
   const r = rng(hashStr(tree.id));
   const phase = r() * Math.PI * 2;
-  // Branches fill the upper crown; successive ones stay close enough to hop between without boosts.
+  // Branches fill the upper crown; successive ones stay close enough to hop between.
   const top = height * 0.92;
   const span = Math.min(height * 0.6, (n - 1) * 1.05);
   const branches: BranchLayout[] = tree.branches.map((item, i) => {
@@ -148,7 +142,7 @@ function layoutTree(tree: Tree, index: number, pos: V3): TreeLayout {
   return { tree, index, pos, height, trunkR, crownR, branches };
 }
 
-/** Vertical gaps between successive perches of a tree (the climb must stay possible without boosts). */
+/** Vertical gaps between successive perches of a tree (the climb must stay possible). */
 export function maxPerchGap(t: TreeLayout): number {
   const ys = t.branches.map((b) => b.perch.y).sort((a, b) => a - b);
   let gap = 0;
@@ -192,24 +186,6 @@ export function buildLayout(world: World): Layout {
   });
   const door = toWorld(0, -d / 2);
 
-  // Golden Peanuts next to Exceptional Cards.
-  const ex = new Set(world.exceptional);
-  const peanuts: Peanut[] = [];
-  for (const t of trees) {
-    for (const b of t.branches) {
-      if (!ex.has(b.item.id)) continue;
-      const dx = b.tip.x - b.base.x, dz = b.tip.z - b.base.z;
-      const l = Math.hypot(dx, dz) || 1;
-      peanuts.push({
-        id: b.item.id,
-        pos: { x: b.tip.x + (dx / l) * 0.9, y: b.tip.y + 0.35, z: b.tip.z + (dz / l) * 0.9 },
-      });
-    }
-  }
-  for (const p of pots) {
-    if (ex.has(p.item.id)) peanuts.push({ id: p.item.id, pos: { ...p.pos, y: p.pos.y + 1.4 } });
-  }
-
   const s0 = slots[0];
   const start = { x: s0.c.x - s0.t.x * 6, y: 0, z: s0.c.z - s0.t.z * 6 };
   start.y = groundHeight(start.x, start.z);
@@ -221,7 +197,6 @@ export function buildLayout(world: World): Layout {
     pots,
     path,
     greenhouse: { center, w, d, h: 3.4, yaw, door },
-    peanuts,
     start,
     startYaw: Math.atan2(s0.t.x, s0.t.z),
     radius: radius + 12,

@@ -1,6 +1,5 @@
 // bastonks — one binary: `serve` (default), `healthcheck` (compose) and `smoke` (hosh-deploy POST_DEPLOY).
 
-import exceptional from "../../config/exceptional.json" with { type: "json" };
 import { loadAssets } from "./assets.ts";
 import { loadConfig } from "./config.ts";
 import { makeHandler } from "./http.ts";
@@ -17,7 +16,6 @@ async function serve() {
     store: new Store(cfg.dataDir),
     fetchBoard: (signal) => fetchBoard(cfg.trello, signal),
     fetchImage: (url, signal) => fetchImage(cfg.trello, url, signal),
-    exceptionalTrelloIds: exceptional.cards,
     fetchTimeoutMs: cfg.fetchTimeoutMs,
     minRefetchS: cfg.minRefetchS,
   });

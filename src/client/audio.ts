@@ -55,7 +55,11 @@ export class SoundBoard {
     const d = this.noise.getChannelData(0);
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
     this.nextBeat = ctx.currentTime + 0.2;
-    this.timer = setInterval(() => this.schedule(), 120);
+    this.startForest();
+    this.timer = setInterval(() => {
+      this.schedule();
+      this.forestEvents();
+    }, 120);
   }
 
   setMuted(m: boolean) {
@@ -134,6 +138,255 @@ export class SoundBoard {
     o2.start(t);
     o.stop(t + 1.5);
     o2.stop(t + 1.5);
+  }
+
+  // ---- the forest: wind and leaves (following the gusts), birds and other creatures ---------------------
+
+  private ambience: GainNode | null = null;
+  private windGain: GainNode | null = null;
+  private windFilter: BiquadFilterNode | null = null;
+  private leavesGain: GainNode | null = null;
+  private nextBird = 0;
+  private nextWoodpecker = 0;
+  private nextCuckoo = 0;
+  private nextCrickets = 0;
+
+  private startForest() {
+    const ctx = this.ctx!;
+    this.ambience = ctx.createGain();
+    this.ambience.gain.value = 0.9;
+    this.ambience.connect(this.master!);
+    const loop = (rate: number) => {
+      const src = ctx.createBufferSource();
+      src.buffer = this.noise;
+      src.loop = true;
+      src.playbackRate.value = rate;
+      src.start();
+      return src;
+    };
+    // wind: low, breathy noise whose brightness and level rise with the gust
+    this.windFilter = ctx.createBiquadFilter();
+    this.windFilter.type = "lowpass";
+    this.windFilter.frequency.value = 380;
+    this.windFilter.Q.value = 0.6;
+    this.windGain = ctx.createGain();
+    this.windGain.gain.value = 0.04;
+    loop(0.5).connect(this.windFilter).connect(this.windGain).connect(this.ambience);
+    // leaves: a soft high hiss that only really comes in with the gusts
+    const hp = ctx.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = 2800;
+    const shelf = ctx.createBiquadFilter();
+    shelf.type = "lowpass";
+    shelf.frequency.value = 7000;
+    this.leavesGain = ctx.createGain();
+    this.leavesGain.gain.value = 0.004;
+    loop(1.1).connect(hp).connect(shelf).connect(this.leavesGain).connect(this.ambience);
+    const now = ctx.currentTime;
+    this.nextBird = now + 2 + Math.random() * 4;
+    this.nextWoodpecker = now + 30 + Math.random() * 40;
+    this.nextCuckoo = now + 50 + Math.random() * 60;
+    this.nextCrickets = now + 10 + Math.random() * 15;
+  }
+
+  /** Gust strength 0..1 (from the weather that also sways the trees). */
+  setWind(g: number) {
+    if (!this.ctx || !this.windGain || !this.leavesGain || !this.windFilter) return;
+    const t = this.ctx.currentTime;
+    this.windGain.gain.setTargetAtTime(0.03 + g * 0.22, t, 0.4);
+    this.windFilter.frequency.setTargetAtTime(300 + g * 700, t, 0.5);
+    this.leavesGain.gain.setTargetAtTime(0.003 + g * g * 0.07, t, 0.3);
+  }
+
+  private forestEvents() {
+    const ctx = this.ctx!;
+    const now = ctx.currentTime;
+    if (now >= this.nextBird) {
+      const r = Math.random();
+      if (r < 0.45) this.birdChirps(now);
+      else if (r < 0.75) this.birdWarble(now);
+      else this.birdCall(now);
+      // birds answer each other now and then
+      this.nextBird = now + (Math.random() < 0.3 ? 0.8 + Math.random() * 1.5 : 4 + Math.random() * 10);
+    }
+    if (now >= this.nextWoodpecker) {
+      this.woodpecker(now);
+      this.nextWoodpecker = now + 45 + Math.random() * 70;
+    }
+    if (now >= this.nextCuckoo) {
+      this.cuckoo(now);
+      this.nextCuckoo = now + 70 + Math.random() * 90;
+    }
+    if (now >= this.nextCrickets) {
+      this.crickets(now);
+      this.nextCrickets = now + 14 + Math.random() * 26;
+    }
+  }
+
+  /** A voice placed somewhere around the listener, at a random distance (pan + level). */
+  private voice(vol: number): AudioNode {
+    const ctx = this.ctx!;
+    const g = ctx.createGain();
+    g.gain.value = vol * (0.35 + Math.random() * 0.65);
+    const pan = ctx.createStereoPanner();
+    pan.pan.value = Math.random() * 1.6 - 0.8;
+    g.connect(pan).connect(this.ambience!);
+    return g;
+  }
+
+  private tone(
+    out: AudioNode,
+    t: number,
+    dur: number,
+    f0: number,
+    f1: number,
+    vol: number,
+    type: OscillatorType = "sine",
+  ) {
+    const ctx = this.ctx!;
+    const o = ctx.createOscillator();
+    o.type = type;
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + Math.min(0.02, dur / 3));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(out);
+    o.start(t);
+    o.stop(t + dur + 0.02);
+  }
+
+  /** Quick rising chirps. */
+  private birdChirps(t: number) {
+    const out = this.voice(0.12);
+    const n = 2 + Math.floor(Math.random() * 4);
+    const base = 2600 + Math.random() * 1400;
+    for (let i = 0; i < n; i++) {
+      const s = t + i * (0.09 + Math.random() * 0.07);
+      this.tone(out, s, 0.07, base * (0.9 + Math.random() * 0.2), base * 1.45, 0.5);
+    }
+  }
+
+  /** A little warbling song. */
+  private birdWarble(t: number) {
+    const ctx = this.ctx!;
+    const out = this.voice(0.08);
+    const dur = 0.6 + Math.random() * 0.8;
+    const o = ctx.createOscillator();
+    const f = 2800 + Math.random() * 900;
+    o.frequency.setValueAtTime(f, t);
+    for (let k = 1; k <= 6; k++) {
+      o.frequency.linearRampToValueAtTime(f * (0.85 + Math.random() * 0.35), t + (dur * k) / 6);
+    }
+    const vib = ctx.createOscillator();
+    vib.frequency.value = 22 + Math.random() * 14;
+    const vg = ctx.createGain();
+    vg.gain.value = 180;
+    vib.connect(vg).connect(o.frequency);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.4, t + 0.05);
+    g.gain.setValueAtTime(0.4, t + dur - 0.1);
+    g.gain.linearRampToValueAtTime(0, t + dur);
+    o.connect(g).connect(out);
+    o.start(t);
+    vib.start(t);
+    o.stop(t + dur + 0.05);
+    vib.stop(t + dur + 0.05);
+  }
+
+  /** A two-note call, repeated two or three times ("tui-tui"). */
+  private birdCall(t: number) {
+    const out = this.voice(0.1);
+    const hi = 2100 + Math.random() * 700, lo = hi * (0.7 + Math.random() * 0.1);
+    const reps = 2 + Math.floor(Math.random() * 2);
+    for (let i = 0; i < reps; i++) {
+      const s = t + i * 0.42;
+      this.tone(out, s, 0.14, hi, hi * 1.05, 0.45);
+      this.tone(out, s + 0.17, 0.16, lo, lo * 0.95, 0.4);
+    }
+  }
+
+  /** A woodpecker far away: a fast drum roll that slows down. */
+  private woodpecker(t: number) {
+    const ctx = this.ctx!;
+    const out = this.voice(0.18);
+    const n = 10 + Math.floor(Math.random() * 7);
+    let s = t;
+    for (let i = 0; i < n; i++) {
+      const src = ctx.createBufferSource();
+      src.buffer = this.noise;
+      const bp = ctx.createBiquadFilter();
+      bp.type = "bandpass";
+      bp.frequency.value = 1100 + Math.random() * 200;
+      bp.Q.value = 6;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.9, s);
+      g.gain.exponentialRampToValueAtTime(0.001, s + 0.03);
+      src.connect(bp).connect(g).connect(out);
+      src.start(s, Math.random() * 0.8, 0.04);
+      s += 0.05 + i * 0.004;
+    }
+  }
+
+  /** The cuckoo, from the edge of the forest. */
+  private cuckoo(t: number) {
+    const out = this.voice(0.14);
+    const reps = 2 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < reps; i++) {
+      const s = t + i * 0.9;
+      this.tone(out, s, 0.32, 740, 720, 0.5, "triangle");
+      this.tone(out, s + 0.36, 0.42, 590, 570, 0.5, "triangle");
+    }
+  }
+
+  /** Crickets: a few soft, buzzing trills. */
+  private crickets(t: number) {
+    const ctx = this.ctx!;
+    const out = this.voice(0.035);
+    const bursts = 3 + Math.floor(Math.random() * 5);
+    for (let i = 0; i < bursts; i++) {
+      const s = t + i * (0.5 + Math.random() * 0.3);
+      const o = ctx.createOscillator();
+      o.frequency.value = 4400 + Math.random() * 300;
+      const am = ctx.createOscillator();
+      am.frequency.value = 28;
+      const amg = ctx.createGain();
+      amg.gain.value = 0.5;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, s);
+      g.gain.linearRampToValueAtTime(0.5, s + 0.03);
+      g.gain.linearRampToValueAtTime(0, s + 0.28);
+      am.connect(amg).connect(g.gain);
+      o.connect(g).connect(out);
+      o.start(s);
+      am.start(s);
+      o.stop(s + 0.3);
+      am.stop(s + 0.3);
+    }
+  }
+
+  /** Leaves brushed by the pigeon. */
+  rustle(vol = 0.5) {
+    if (!this.gate("rustle", 0.35)) return;
+    const ctx = this.ctx!, t = ctx.currentTime;
+    const src = ctx.createBufferSource();
+    src.buffer = this.noise;
+    const bp = ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.value = 3500 + Math.random() * 1500;
+    bp.Q.value = 0.7;
+    const g = ctx.createGain();
+    const dur = 0.25 + Math.random() * 0.25;
+    g.gain.setValueAtTime(0, t);
+    // a few crackling swells, like leaves rubbing
+    for (let k = 0; k < 4; k++) {
+      g.gain.linearRampToValueAtTime(vol * (0.15 + Math.random() * 0.2), t + (dur * (k + 0.5)) / 4);
+    }
+    g.gain.linearRampToValueAtTime(0, t + dur);
+    src.connect(bp).connect(g).connect(this.sfx!);
+    src.start(t, Math.random() * 0.6, dur + 0.05);
   }
 
   // ---- effects -------------------------------------------------------------------------------------------

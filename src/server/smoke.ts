@@ -25,7 +25,6 @@ const GENERATED = new Set([
   "due",
   "week",
   "snapshotAt",
-  "exceptional",
 ]);
 
 /** Every content string inside a JSON value. */

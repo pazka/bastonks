@@ -1,4 +1,4 @@
-// One Points draw call for every inspectable item: a soft twinkle on unfound items (range grows with Boosts),
+// One Points draw call for every inspectable item: a soft twinkle on unfound items,
 // a stronger pulsing halo on New Growth, and a ring on the item the pigeon can inspect right now.
 
 import * as THREE from "three";

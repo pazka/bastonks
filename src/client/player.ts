@@ -6,7 +6,7 @@ import type { Collider, Forest, WorldItem } from "./forest.ts";
 import { Grid, groundHeight, type V3 } from "./layout.ts";
 import type { Intent } from "./input.ts";
 import type { PigeonMode } from "./pigeon.ts";
-import { boosted, TUNING } from "./tuning.ts";
+import { TUNING } from "./tuning.ts";
 
 export interface PerchPoint {
   p: V3;
@@ -26,12 +26,11 @@ export class Player {
   mode: PigeonMode = "ground";
   flap = 0;
   perch: PerchPoint | null = null;
-  private hop: { from: THREE.Vector3; to: HopTarget; t: number } | null = null;
+  private hop: { from: THREE.Vector3; to: HopTarget; t: number; dur: number; arc: number } | null = null;
   private perches = new Grid<PerchPoint>(4);
   private colliderGrid = new Grid<{ p: V3; c: Collider }>(6);
   private near: PerchPoint[] = [];
   private nearC: { p: V3; c: Collider }[] = [];
-  boost = 0;
   /** Events for audio/UI. */
   onFlap: (() => void) | null = null;
   onLand: (() => void) | null = null;
@@ -76,15 +75,14 @@ export class Player {
     const wz = fz * it.my + fx * it.mx;
     const wish = Math.min(1, Math.hypot(wx, wz));
     const ground = groundHeight(this.pos.x, this.pos.z);
-    const climb = boosted(TUNING.climbReach, TUNING.boost.climbReach, this.boost);
+    const climb = TUNING.climbReach;
 
     if (this.hop) {
-      // Boost "easier climbing": quicker hops.
-      this.hop.t += dt / (0.42 / boosted(1, TUNING.boost.climbReach, this.boost));
+      this.hop.t += dt / this.hop.dur;
       const t = Math.min(1, this.hop.t);
       const to = this.hop.to.perch?.p ?? this.hop.to.ground!;
       this.pos.lerpVectors(this.hop.from, new THREE.Vector3(to.x, to.y, to.z), t);
-      this.pos.y += Math.sin(t * Math.PI) * 0.5;
+      this.pos.y += Math.sin(t * Math.PI) * this.hop.arc;
       if (t >= 1) {
         if (this.hop.to.perch) {
           this.perch = this.hop.to.perch;
@@ -139,7 +137,7 @@ export class Player {
       this.flap = 0;
     } else {
       // flying
-      const speed = boosted(TUNING.flySpeed, TUNING.boost.flySpeed, this.boost);
+      const speed = TUNING.flySpeed;
       const k = wish > 0.05 ? 2.2 : 0.8;
       this.vel.x = damp(this.vel.x, wx * speed, k, dt);
       this.vel.z = damp(this.vel.z, wz * speed, k, dt);
@@ -189,11 +187,34 @@ export class Player {
     this.onFlap?.();
   }
 
-  private startHop(to: HopTarget) {
-    this.hop = { from: this.pos.clone(), to, t: 0 };
+  private startHop(to: HopTarget, dur = 0.42, arc = 0.5) {
+    this.hop = { from: this.pos.clone(), to, t: 0, dur, arc };
     this.mode = "fly";
     this.flap = 0.6;
     this.onHop?.();
+  }
+
+  /** E: swoop in one gliding arc to a perch (a Branch or a Seed Pot), from anywhere within range. */
+  swoopTo(pp: PerchPoint) {
+    if (this.hop || this.perch === pp) return;
+    const d = this.pos.distanceTo(new THREE.Vector3(pp.p.x, pp.p.y, pp.p.z));
+    this.perch = null;
+    this.startHop({ perch: pp }, 0.45 + d * 0.07, Math.min(3, 0.4 + d * 0.18));
+  }
+
+  /** The closest perch within `range`, preferring those whose card is not found yet. */
+  closestPerch(range: number, isFound: (p: PerchPoint) => boolean): PerchPoint | null {
+    let best: PerchPoint | null = null, bd = Infinity;
+    for (const c of this.perches.near(this.pos, range, this.near)) {
+      if (c === this.perch) continue;
+      const d = (c.p.x - this.pos.x) ** 2 + (c.p.y - this.pos.y) ** 2 + (c.p.z - this.pos.z) ** 2;
+      const score = d + (isFound(c) ? range * range : 0); // an unfound card wins over a found one
+      if (score < bd) {
+        bd = score;
+        best = c;
+      }
+    }
+    return best;
   }
 
   /** A spot on the ground just outside the trunk, below a perch. */
@@ -326,13 +347,17 @@ export class ChaseCamera {
   perched = false;
   /** When perched: the yaw that shows the branch from the side, outside the crown (null = follow the pigeon). */
   perchYaw: number | null = null;
+  private wasPerched = false;
 
   update(dt: number, target: THREE.Vector3, pigeonYaw: number, moving: boolean, flying: boolean, it: Intent) {
     if (it.yaw || it.pitch) this.idle = 0;
     else this.idle += dt;
     this.yaw += it.yaw;
     this.pitch = Math.max(-0.35, Math.min(1.2, this.pitch + it.pitch));
-    this.dist = Math.max(2.2, Math.min(14, this.dist * (1 + it.zoom)));
+    // landing on a branch brings the camera in once; the wheel stays free to zoom in or out from there
+    if (this.perched && !this.wasPerched) this.dist = Math.min(this.dist, 2.8);
+    this.wasPerched = this.perched;
+    this.dist = Math.max(1.6, Math.min(18, this.dist * (1 + it.zoom)));
     if (this.perched && this.perchYaw !== null && this.idle > 1.2) {
       let d = this.perchYaw - this.yaw;
       while (d > Math.PI) d -= Math.PI * 2;
@@ -345,8 +370,7 @@ export class ChaseCamera {
       while (d < -Math.PI) d += Math.PI * 2;
       this.yaw += d * Math.min(1, dt * (flying ? 1.6 : 1.0));
     }
-    const d = this.perched ? Math.min(this.dist, 2.6) : this.dist;
-    this.effDist += (d - this.effDist) * Math.min(1, dt * 3);
+    this.effDist += (this.dist - this.effDist) * Math.min(1, dt * 6);
     this.place(target, Math.min(1, dt * 8));
   }
 

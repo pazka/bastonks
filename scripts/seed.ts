@@ -5,7 +5,6 @@
 import { cleanBoard, idPairs, makeHasher } from "../src/server/clean.ts";
 import { gradientPng } from "../tests/fixtures/png.ts";
 import { syntheticBoard } from "../tests/fixtures/synthetic.ts";
-import exceptional from "../config/exceptional.json" with { type: "json" };
 
 const dir = Deno.args[0];
 if (!dir) throw new Error("usage: seed.ts <dir>");
@@ -13,7 +12,6 @@ const raw = syntheticBoard();
 const salt = crypto.getRandomValues(new Uint8Array(32));
 const hash = await makeHasher(salt, [
   ...idPairs(raw),
-  ...exceptional.cards.map((id) => ["card", id] as [string, string]),
 ]);
 const { snapshot, images } = cleanBoard(raw, hash, new Date(Date.now() - 3600_000));
 await Deno.mkdir(`${dir}/img`, { recursive: true });

@@ -112,10 +112,9 @@ export class UI {
     b.title = m ? t().unmute : t().mute;
   }
 
-  setCounter(found: number, total: number, peanuts: number, peanutsTotal: number) {
+  setCounter(found: number, total: number) {
     const s = t();
-    let text = s.found(fmtInt(found), fmtInt(total));
-    if (peanutsTotal > 0) text += ` · ${s.peanuts(peanuts, peanutsTotal)}`;
+    const text = s.found(fmtInt(found), fmtInt(total));
     $("counter").textContent = text;
   }
 
@@ -267,6 +266,25 @@ export class UI {
       tr.append(el("td", "", k), el("td", "", v));
       table.append(tr);
     }
-    b.replaceChildren(el("h2", "", s.help), table);
+    const parts: HTMLElement[] = [el("h2", "", s.help), table];
+    if (!document.body.classList.contains("touch")) {
+      // mouse behaviour (remembered in this browser)
+      parts.push(el("h3", "", s.mouse));
+      for (const axis of ["x", "y"] as const) {
+        const label = el("label", "option");
+        const box = el("input");
+        box.type = "checkbox";
+        box.checked = this.mouse[axis];
+        box.addEventListener("change", () => this.onMouseOption?.(axis, box.checked));
+        label.append(box, document.createTextNode(axis === "x" ? s.invertX : s.invertY));
+        parts.push(label);
+      }
+      parts.push(el("p", "small", s.ctrlNote));
+    }
+    b.replaceChildren(...parts);
   }
+
+  /** Current mouse options, shown as checkboxes in the Controls dialog. */
+  mouse = { x: false, y: false };
+  onMouseOption: ((axis: "x" | "y", inverted: boolean) => void) | null = null;
 }

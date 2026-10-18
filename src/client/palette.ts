@@ -59,7 +59,6 @@ export const COLORS = {
   sprout: 0x7fd36b,
   glass: 0xcfeff0,
   frame: 0xf4f0e6,
-  peanut: 0xf2c14e,
   rock: 0xb8b2a6,
   flower: [0xffffff, 0xffd3e0, 0xffe680, 0xc9b6ff],
 };

@@ -7,6 +7,8 @@ import type { Fruit, Item, World } from "../shared/types.ts";
 import { groundHeight, hashStr, type Layout, rng, type V3 } from "./layout.ts";
 import { COLORS, SEASON_LEAVES, trelloColor } from "./palette.ts";
 import { outlineInstanced, outlineMesh, toon, toonNearFade } from "./toon.ts";
+import { CLEARING_RADIUS } from "./groundText.ts";
+import { type WindKind, withWind } from "./wind.ts";
 
 export type ItemKind = "branch" | "pot";
 
@@ -18,6 +20,8 @@ export interface WorldItem {
   p: V3;
   /** Where the pigeon may sit next to it. */
   perch: V3;
+  /** Where a Branch leaves its trunk (pivot of its swing). */
+  base?: V3;
   tree: number;
   week?: string;
   list?: string;
@@ -42,10 +46,10 @@ export interface Forest {
   spheres: { c: V3; r: number }[];
   /** Greenhouse walls as segments in XZ, with height. */
   walls: { ax: number; az: number; bx: number; bz: number; h: number; y: number }[];
-  peanutMesh: THREE.InstancedMesh;
   update(time: number, dt: number): void;
-  hidePeanut(index: number): void;
   grow(items: WorldItem[], t: number): void;
+  /** The Branch swings and settles (the pigeon landed on it or left it). */
+  bounce(item: WorldItem, time: number): void;
 }
 
 const tmp = new THREE.Object3D();
@@ -61,6 +65,12 @@ function instanced(geo: THREE.BufferGeometry, mat: THREE.Material, count: number
 
 function setColor(m: THREE.InstancedMesh, i: number, hex: number, c = new THREE.Color()) {
   m.setColorAt(i, c.setHex(hex));
+}
+
+/** Lets the wind (and the pigeon) move this mesh, and its outline with it. */
+function windy(m: THREE.InstancedMesh, kind: WindKind) {
+  withWind(m.material as THREE.Material, kind);
+  m.userData.wind = kind;
 }
 
 /** Matrix placing a unit cylinder (y ∈ [0,1]) from a to b with radius r. */
@@ -150,14 +160,6 @@ function potGeometry() {
   return g;
 }
 
-function peanutGeometry() {
-  const a = new THREE.SphereGeometry(0.2, 10, 8).scale(1, 1.1, 1).translate(0, 0.17, 0);
-  const b = new THREE.SphereGeometry(0.22, 10, 8).scale(1, 1.1, 1).translate(0, -0.17, 0);
-  const g = mergeGeometries([a.toNonIndexed(), b.toNonIndexed()]);
-  g.computeVertexNormals();
-  return g;
-}
-
 function blobTexture() {
   const s = 64;
   const d = new Uint8Array(s * s * 4);
@@ -182,17 +184,21 @@ function grassTexture(): THREE.CanvasTexture {
   const r = rng(1234);
   g.fillStyle = "#f6f0dc";
   g.fillRect(0, 0, S, S);
+  // every mark is drawn 9 times (tile + its 8 neighbours) so the tile wraps without a seam
+  const wrap = (draw: (dx: number, dy: number) => void) => {
+    for (const dx of [-S, 0, S]) for (const dy of [-S, 0, S]) draw(dx, dy);
+  };
   // soft dapples (light through leaves)
   for (let i = 0; i < 40; i++) {
     const x = r() * S, y = r() * S, rad = 20 + r() * 60;
-    const grd = g.createRadialGradient(x, y, 0, x, y, rad);
     const warm = r() < 0.5;
-    grd.addColorStop(0, warm ? "rgba(255, 236, 170, 0.35)" : "rgba(170, 200, 120, 0.22)");
-    grd.addColorStop(1, "rgba(0, 0, 0, 0)");
-    g.fillStyle = grd;
-    for (const dx of [-S, 0, S]) {
-      for (const dy of [-S, 0, S]) g.fillRect(x - rad + dx, y - rad + dy, rad * 2, rad * 2);
-    }
+    wrap((dx, dy) => {
+      const grd = g.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, rad);
+      grd.addColorStop(0, warm ? "rgba(255, 236, 170, 0.35)" : "rgba(170, 200, 120, 0.22)");
+      grd.addColorStop(1, "rgba(0, 0, 0, 0)");
+      g.fillStyle = grd;
+      g.fillRect(x + dx - rad, y + dy - rad, rad * 2, rad * 2);
+    });
   }
   // blades (wrapped so the tile repeats seamlessly)
   const blades = [
@@ -228,15 +234,17 @@ function grassTexture(): THREE.CanvasTexture {
       : "rgba(240, 150, 120, 0.75)";
     const rad = fleck < 0.55 ? 2.5 + r() * 2.5 : 1.4 + r() * 1.4;
     for (let k = 0; k < (fleck < 0.55 ? 3 : 1); k++) {
-      g.beginPath();
-      g.arc(
-        x + (k ? Math.cos(k * 2.1) * rad : 0),
-        y + (k ? Math.sin(k * 2.1) * rad : 0),
-        rad,
-        0,
-        Math.PI * 2,
-      );
-      g.fill();
+      wrap((dx, dy) => {
+        g.beginPath();
+        g.arc(
+          x + dx + (k ? Math.cos(k * 2.1) * rad : 0),
+          y + dy + (k ? Math.sin(k * 2.1) * rad : 0),
+          rad,
+          0,
+          Math.PI * 2,
+        );
+        g.fill();
+      });
     }
   }
   const t = new THREE.CanvasTexture(cv);
@@ -330,7 +338,23 @@ export function buildForest(
   rings.computeVertexNormals();
   const groundTex = grassTexture();
   groundTex.repeat.set((R * 2) / 7, (R * 2) / 7);
-  const groundMesh = new THREE.Mesh(rings, toon(0xffffff, { vertexColors: true, map: groundTex }));
+  const groundMat = toon(0xffffff, { vertexColors: true, map: groundTex });
+  // anti-tiling: blend the tile with a rotated, rescaled copy of itself, mixed by a slow non-periodic field,
+  // so neither tile edges nor the repeat pattern can be seen
+  groundMat.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <map_fragment>",
+      `#ifdef USE_MAP
+        vec4 tA = texture2D(map, vMapUv);
+        vec2 uvB = mat2(0.8, -0.6, 0.6, 0.8) * vMapUv * 0.43 + vec2(0.37, 0.71);
+        vec4 tB = texture2D(map, uvB);
+        float k = 0.5 + 0.5 * sin(vMapUv.x * 0.37 + sin(vMapUv.y * 0.29) * 2.0) * cos(vMapUv.y * 0.41 - vMapUv.x * 0.13);
+        diffuseColor *= mix(tA, tB, 0.2 + 0.6 * k);
+      #endif`,
+    );
+  };
+  groundMat.customProgramCacheKey = () => "ground-antitile";
+  const groundMesh = new THREE.Mesh(rings, groundMat);
   groundMesh.name = "ground";
   group.add(groundMesh);
 
@@ -369,12 +393,15 @@ export function buildForest(
   // Trunks
   const trunkGeo = faceted(new THREE.CylinderGeometry(0.62, 1, 1, 7, 1).translate(0, 0.5, 0));
   const trunks = instanced(trunkGeo, toon(0xffffff), nTrees, "trunks");
+  windy(trunks, "tree");
   // Limbs
   const limbGeo = faceted(new THREE.CylinderGeometry(0.55, 1, 1, 5, 1).translate(0, 0.5, 0));
   const limbs = instanced(limbGeo, toon(0xffffff), nBranches, "limbs");
+  windy(limbs, "tree");
   // Leaves: per branch 2 clusters + per tree 2 crown clusters
   const leafGeo = new THREE.IcosahedronGeometry(1, 0);
   const leaves = instanced(leafGeo, toonNearFade(0xffffff), nBranches * 2 + nTrees * 2, "leaves");
+  windy(leaves, "leaf");
   // Fruits by species
   const species = world.species;
   const fruitCounts = new Map<Fruit, number>();
@@ -394,6 +421,7 @@ export function buildForest(
   const fruitUsed = new Map<Fruit, number>();
   for (const [f, n] of fruitCounts) {
     const m = instanced(fruitGeometry(f), toon(0xffffff), n, `fruit-${f}`);
+    windy(m, "leaf");
     fruitMeshes.set(f, m);
     fruitUsed.set(f, 0);
   }
@@ -505,6 +533,7 @@ export function buildForest(
         kind: "branch",
         p: b.tip,
         perch: b.perch,
+        base: b.base,
         tree: ti,
         week: t.tree.week,
         parts,
@@ -646,6 +675,7 @@ export function buildForest(
       layout.pots.filter((p) => p.item.sprout).length,
       "sprouts",
     );
+    windy(sprouts, "grass");
     let si = 0;
     layout.pots.forEach((p, i) => {
       const parts: WorldItem["parts"] = [];
@@ -703,12 +733,14 @@ export function buildForest(
     );
     tuftGeo.computeVertexNormals();
     const tufts = instanced(tuftGeo, toon(0xffffff), n, "tufts");
+    windy(tufts, "grass");
     const flowers = instanced(
       flowerGeometry(),
       toon(0xffffff, { vertexColors: true }),
       Math.round(n / 2.2),
       "flowers",
     );
+    windy(flowers, "grass");
     const clover = instanced(
       new THREE.CircleGeometry(0.5, 7).rotateX(-Math.PI / 2).translate(0, 0.03, 0),
       toon(0xffffff),
@@ -727,10 +759,13 @@ export function buildForest(
       Math.round(n / 22),
       "bushes",
     );
+    windy(bushes, "leaf");
     const pathPts = layout.path;
     const g = layout.greenhouse;
     const clear = (x: number, z: number, margin: number) => {
       if (Math.hypot(x - g.center.x, z - g.center.z) < Math.max(g.w, g.d) / 2 + 1.5) return false;
+      // the sandy clearing where the epigraph is written stays bare
+      if (Math.hypot(x - layout.start.x, z - layout.start.z) < CLEARING_RADIUS + margin) return false;
       for (const t of layout.trees) {
         if (Math.abs(t.pos.x - x) < t.trunkR + margin && Math.abs(t.pos.z - z) < t.trunkR + margin) {
           if (Math.hypot(t.pos.x - x, t.pos.z - z) < t.trunkR + margin) return false;
@@ -844,17 +879,10 @@ export function buildForest(
     addOutline(mush, 0.012);
   }
 
-  // Golden Peanuts
-  const peanutMesh = instanced(
-    peanutGeometry(),
-    toon(COLORS.peanut, { emissive: 0x6b4a00 }),
-    layout.peanuts.length,
-    "peanuts",
-  );
-  group.add(peanutMesh);
-  addOutline(peanutMesh, 0.02);
-  const hidden = new Set<number>();
   const growing = new Map<WorldItem, number>();
+  const bouncing = new Map<WorldItem, number>();
+  const pivot = new THREE.Matrix4(), rot = new THREE.Matrix4(), back = new THREE.Matrix4();
+  const axis = new THREE.Vector3();
 
   return {
     group,
@@ -862,36 +890,43 @@ export function buildForest(
     colliders,
     spheres,
     walls,
-    peanutMesh,
     update(time: number) {
-      layout.peanuts.forEach((p, i) => {
-        tmp.position.set(p.pos.x, p.pos.y + Math.sin(time * 2 + i) * 0.12, p.pos.z);
-        tmp.rotation.set(0.3, time * 1.6 + i, 0.2);
-        tmp.scale.setScalar(hidden.has(i) ? 0 : 1);
-        tmp.updateMatrix();
-        peanutMesh.setMatrixAt(i, tmp.matrix);
-      });
-      peanutMesh.instanceMatrix.needsUpdate = layout.peanuts.length > 0;
+      const touched = new Set<THREE.InstancedMesh>();
       if (growing.size) {
-        const touched = new Set<THREE.InstancedMesh>();
         for (const [it, s] of growing) {
           for (const part of it.parts) {
             // scale each instance about its own origin
             const pos = new THREE.Vector3(), q = new THREE.Quaternion(), sc = new THREE.Vector3();
             part.matrix.decompose(pos, q, sc);
-            if (part.mesh.name === "limbs") sc.set(sc.x * s, sc.y * s, sc.z * s);
-            else sc.multiplyScalar(s);
+            sc.multiplyScalar(s);
             m4.compose(pos, q, sc);
             part.mesh.setMatrixAt(part.index, m4);
             touched.add(part.mesh);
           }
           if (s >= 1) growing.delete(it);
         }
-        for (const m of touched) m.instanceMatrix.needsUpdate = true;
       }
+      // a Branch the pigeon lands on (or leaves) bobs and settles, swinging about its base
+      for (const [it, t0] of bouncing) {
+        const t = time - t0;
+        const done = t > 1.6 || !it.base;
+        const ang = done ? 0 : 0.09 * Math.exp(-3.2 * t) * Math.sin(t * 16);
+        const b = it.base ?? it.p;
+        axis.set(-(it.p.z - b.z), 0, it.p.x - b.x).normalize();
+        pivot.makeTranslation(b.x, b.y, b.z);
+        rot.makeRotationAxis(axis, ang);
+        back.makeTranslation(-b.x, -b.y, -b.z);
+        for (const part of it.parts) {
+          m4.copy(pivot).multiply(rot).multiply(back).multiply(part.matrix);
+          part.mesh.setMatrixAt(part.index, m4);
+          touched.add(part.mesh);
+        }
+        if (done) bouncing.delete(it);
+      }
+      for (const m of touched) m.instanceMatrix.needsUpdate = true;
     },
-    hidePeanut(i: number) {
-      hidden.add(i);
+    bounce(it: WorldItem, time: number) {
+      if (it.kind === "branch" && !growing.has(it)) bouncing.set(it, time);
     },
     grow(list: WorldItem[], t: number) {
       const s = t <= 0 ? 0.001 : t >= 1 ? 1 : 1 - (1 - t) ** 3;

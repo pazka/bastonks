@@ -75,7 +75,5 @@ export interface World {
   trees: Tree[];
   /** Seed Pots of the Greenhouse. */
   pots: SeedPot[];
-  /** Opaque ids of Exceptional Cards present in the world (hand-curated in config/exceptional.json). */
-  exceptional: string[];
   counts: { trees: number; branches: number; pots: number };
 }

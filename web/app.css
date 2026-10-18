@@ -78,6 +78,8 @@ dialog.sheet table { border-collapse: collapse; font-size: .9rem; }
 dialog.sheet td { padding: 4px 12px 4px 0; vertical-align: top; }
 dialog.sheet td:first-child { font-weight: 600; white-space: nowrap; }
 .small { font-size: .8rem !important; color: var(--muted); }
+dialog.sheet .option { display: flex; align-items: center; gap: .6em; font-size: .92rem; padding: 4px 0; cursor: pointer; }
+dialog.sheet .option input { width: 1.1em; height: 1.1em; accent-color: #6fa84f; }
 
 /* Touch controls */
 .touch-ui { position: fixed; inset: 0; pointer-events: none; z-index: 12; }

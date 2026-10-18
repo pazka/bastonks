@@ -31,6 +31,9 @@ export class Input {
   private touchInspect = false;
   private dragging = false;
   enabled = true;
+  /** Mouse look multipliers: 1 = default feel, -1 = inverted axis (player preference). */
+  lookX = 1;
+  lookY = 1;
   touchMode = false;
   onAnyGesture: (() => void) | null = null;
 
@@ -57,9 +60,9 @@ export class Input {
     canvas.addEventListener("pointermove", (e) => {
       if (e.pointerType === "touch") return this.touchMove(e);
       if (!this.dragging) return;
-      // the scene follows the mouse (drag right → look right, drag up → look up)
-      this.yaw += e.movementX * 0.005;
-      this.pitch += e.movementY * 0.004;
+      // default: drag right → turn right, drag up → camera rises (each axis can be inverted in Controls)
+      this.yaw += e.movementX * 0.005 * this.lookX;
+      this.pitch -= e.movementY * 0.004 * this.lookY;
     });
     const end = (e: PointerEvent) => {
       if (e.pointerType === "touch") return this.touchEnd(e);
@@ -67,8 +70,11 @@ export class Input {
     };
     canvas.addEventListener("pointerup", end);
     canvas.addEventListener("pointercancel", end);
-    canvas.addEventListener("wheel", (e) => {
-      this.zoom += Math.sign(e.deltaY) * 0.12;
+    // wheel / trackpad: zoom the camera in and out (anywhere but over the panel or a dialog, which scroll)
+    addEventListener("wheel", (e) => {
+      if ((e.target as HTMLElement)?.closest?.("#panel, dialog")) return;
+      const step = Math.max(-1, Math.min(1, e.deltaY / (e.deltaMode === 1 ? 3 : 100)));
+      this.zoom += step * 0.14;
       e.preventDefault();
     }, { passive: false });
     canvas.addEventListener("contextmenu", (e) => e.preventDefault());
@@ -152,9 +158,9 @@ export class Input {
       mx: this.enabled ? mx : 0,
       my: this.enabled ? my : 0,
       up: this.enabled && (has(" ") || this.touchUp),
-      down: this.enabled && (has("shift", "c") || this.touchDown),
+      down: this.enabled && (has("shift", "control", "c") || this.touchDown),
       upPressed: this.enabled && (pr(" ") || this.touchUpPressed),
-      downPressed: this.enabled && (pr("shift", "c") || this.touchDownPressed),
+      downPressed: this.enabled && (pr("shift", "control", "c") || this.touchDownPressed),
       inspect: this.enabled && (pr("e", "enter") || this.touchInspect),
       yaw: this.yaw,
       pitch: this.pitch,

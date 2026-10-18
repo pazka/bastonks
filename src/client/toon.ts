@@ -3,6 +3,7 @@
 
 import * as THREE from "three";
 import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
+import { WIND, WIND_GLSL, windCall, type WindKind } from "./wind.ts";
 
 let gradient: THREE.DataTexture | null = null;
 
@@ -55,18 +56,26 @@ export function toonNearFade(
 const outlineMaterials = new Map<string, THREE.ShaderMaterial>();
 
 /** Outline material: pushes vertices along their (smoothed) normals and draws back faces in a dark ink. */
-export function outlineMaterial(thickness: number, color = 0x2b2a33, near = 0): THREE.ShaderMaterial {
-  const key = `${thickness}:${color}:${near}`;
+export function outlineMaterial(
+  thickness: number,
+  color = 0x2b2a33,
+  near = 0,
+  wind: WindKind | null = null,
+): THREE.ShaderMaterial {
+  const key = `${thickness}:${color}:${near}:${wind}`;
   const hit = outlineMaterials.get(key);
   if (hit) return hit;
+  const uniforms = THREE.UniformsUtils.merge([
+    THREE.UniformsLib.fog,
+    { thickness: { value: thickness }, ink: { value: new THREE.Color(color) }, uNear: { value: near } },
+  ]);
+  if (wind) Object.assign(uniforms, WIND); // shared, not copied: the outline sways with its mesh
   const m = new THREE.ShaderMaterial({
-    uniforms: THREE.UniformsUtils.merge([
-      THREE.UniformsLib.fog,
-      { thickness: { value: thickness }, ink: { value: new THREE.Color(color) }, uNear: { value: near } },
-    ]),
+    uniforms,
     vertexShader: /* glsl */ `
       #include <common>
       #include <fog_pars_vertex>
+      ${wind ? WIND_GLSL : ""}
       uniform float thickness;
       varying float vCamDist;
       void main() {
@@ -76,7 +85,14 @@ export function outlineMaterial(thickness: number, color = 0x2b2a33, near = 0): 
           p = instanceMatrix * p;
           n = mat3(instanceMatrix) * n;
         #endif
-        vec4 mvPosition = modelViewMatrix * p;
+        ${
+      wind
+        ? `vec3 io = (modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz; // windy outlines are instanced
+        vec4 wp = modelMatrix * p;
+        wp.xyz += ${windCall(wind, "wp.xyz", "io")};
+        vec4 mvPosition = viewMatrix * wp;`
+        : "vec4 mvPosition = modelViewMatrix * p;"
+    }
         vec3 vn = normalize(normalMatrix * n);
         // Thickness grows a little with distance so far outlines stay visible but thin.
         float w = thickness * clamp(-mvPosition.z * 0.04, 1.0, 3.0);
@@ -123,7 +139,7 @@ export function outlineInstanced(
 ): THREE.InstancedMesh {
   const o = new THREE.InstancedMesh(
     outlineGeometry(mesh.geometry),
-    outlineMaterial(thickness, color, near),
+    outlineMaterial(thickness, color, near, (mesh.userData.wind as WindKind | undefined) ?? null),
     mesh.count,
   );
   o.instanceMatrix = mesh.instanceMatrix;

@@ -12,7 +12,16 @@ import type {
   RawLabel,
   RawList,
 } from "../../src/server/trello.ts";
-import exceptional from "../../config/exceptional.json" with { type: "json" };
+
+/** A few milestone cards with fixed ids (stable fixtures), one in each year of the work. */
+const MILESTONE_IDS = [
+  "63c0a1f0aaaaaaaaaaaa0001",
+  "6420b2e0aaaaaaaaaaaa0002",
+  "64f3c4d0aaaaaaaaaaaa0003",
+  "65a0d5c0aaaaaaaaaaaa0004",
+  "6620e6b0aaaaaaaaaaaa0005",
+  "66f0f7a0aaaaaaaaaaaa0006",
+];
 
 export const FAKE_BOARD_ID = "5f0b0a0d0e0a0d0b0e0e0f00";
 
@@ -174,7 +183,7 @@ export function syntheticBoard(): RawBoard {
     [Date.UTC(2025, 10, 7), "3/11/2025"],
     [Date.UTC(2024, 4, 17), "DONE 13/05/2023"], // wrong year: cards are from May 2024
   ]);
-  const exceptionalIds = [...exceptional.cards];
+  const exceptionalIds = [...MILESTONE_IDS];
 
   for (let wi = 0; wi < weeks.length; wi++) {
     const friday = weeks[wi];
@@ -187,7 +196,7 @@ export function syntheticBoard(): RawBoard {
       const activity = friday + Math.floor(r() * 3 * DAY);
       addCard(list, created, activity, { closed: r() < 0.08 });
     }
-    // Exceptional placeholders land in the week that matches their id timestamp.
+    // Milestones land in the week that matches their id timestamp.
     for (let e = exceptionalIds.length - 1; e >= 0; e--) {
       const t = parseInt(exceptionalIds[e].slice(0, 8), 16) * 1000;
       if (t <= friday && t > friday - 7 * DAY) {
