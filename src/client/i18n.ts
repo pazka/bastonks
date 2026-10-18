@@ -18,8 +18,8 @@ const STRINGS = {
   fr: {
     found: (n: string, t: string) => `${n} / ${t} trouvés`,
     skip: "Passer",
-    inspect: "Se poser",
-    inspectKey: "E — se poser sur la branche la plus proche",
+    inspect: "Inspecter l'arbre",
+    inspectKey: "E : inspecter l'arbre",
     close: "Fermer",
     about: "À propos",
     help: "Commandes",
@@ -95,8 +95,8 @@ const STRINGS = {
   en: {
     found: (n: string, t: string) => `${n} / ${t} found`,
     skip: "Skip",
-    inspect: "Perch",
-    inspectKey: "E — perch on the closest branch",
+    inspect: "Inspect tree",
+    inspectKey: "E : inspect tree",
     close: "Close",
     about: "About",
     help: "Controls",
