@@ -284,6 +284,26 @@ function flowerGeometry() {
   return g;
 }
 
+/** A young tree for a pot (~0.75 tall): a slim brown trunk with a twig, and three leaf clusters. */
+function saplingGeometry(): { trunk: THREE.BufferGeometry; leaves: THREE.BufferGeometry } {
+  const merge = (parts: THREE.BufferGeometry[]) => {
+    const g = mergeGeometries(parts.map((p) => p.toNonIndexed()));
+    g.computeVertexNormals();
+    return g;
+  };
+  return {
+    trunk: merge([
+      new THREE.CylinderGeometry(0.018, 0.03, 0.55, 5).translate(0, 0.275, 0),
+      new THREE.CylinderGeometry(0.008, 0.012, 0.18, 4).rotateZ(-0.9).translate(0.07, 0.38, 0),
+    ]),
+    leaves: merge([
+      new THREE.IcosahedronGeometry(0.15, 0).translate(0, 0.6, 0),
+      new THREE.IcosahedronGeometry(0.1, 0).translate(0.14, 0.46, 0.02),
+      new THREE.IcosahedronGeometry(0.11, 0).translate(-0.1, 0.5, -0.05),
+    ]),
+  };
+}
+
 /** A small round mushroom: cream stem, cap tinted per instance. */
 function mushroomGeometry() {
   const stem = new THREE.CylinderGeometry(0.05, 0.065, 0.18, 6).translate(0, 0.09, 0).toNonIndexed();
@@ -659,27 +679,18 @@ export function buildForest(
     seg(w(door / 2, -hd), w(hw, -hd));
   }
 
-  // Pots, soil, sprouts
+  // Pots, soil and a sapling in every pot: the older the card, the taller its sapling
   {
     const n = layout.pots.length;
     const pots = instanced(potGeometry(), toon(0xffffff), n, "pots");
     const soil = instanced(new THREE.CylinderGeometry(0.37, 0.37, 0.04, 10), toon(COLORS.soil), n, "soil");
-    const sproutGeo = (() => {
-      const stem = new THREE.CylinderGeometry(0.02, 0.025, 0.35, 4).translate(0, 0.175, 0);
-      const l1 = new THREE.SphereGeometry(0.11, 6, 4).scale(1.6, 0.35, 0.8).translate(0.13, 0.33, 0);
-      const l2 = new THREE.SphereGeometry(0.11, 6, 4).scale(1.6, 0.35, 0.8).translate(-0.13, 0.3, 0);
-      const g = mergeGeometries([stem.toNonIndexed(), l1.toNonIndexed(), l2.toNonIndexed()]);
-      g.computeVertexNormals();
-      return g;
-    })();
-    const sprouts = instanced(
-      sproutGeo,
-      toon(COLORS.sprout),
-      layout.pots.filter((p) => p.item.sprout).length,
-      "sprouts",
-    );
-    windy(sprouts, "grass");
-    let si = 0;
+    const sapGeo = saplingGeometry();
+    const sapTrunks = instanced(sapGeo.trunk, toon(COLORS.trunk), n, "sapling-trunks");
+    const saplings = instanced(sapGeo.leaves, toon(0xffffff), n, "saplings");
+    windy(sapTrunks, "grass");
+    windy(saplings, "grass");
+    const now = Date.now();
+    const YEAR = 365 * 86_400_000;
     layout.pots.forEach((p, i) => {
       const parts: WorldItem["parts"] = [];
       tmp.position.set(p.pos.x, p.pos.y + 0.07, p.pos.z);
@@ -693,20 +704,34 @@ export function buildForest(
       tmp.updateMatrix();
       soil.setMatrixAt(i, tmp.matrix);
       parts.push({ mesh: soil, index: i, matrix: tmp.matrix.clone() });
-      if (p.item.sprout) {
-        sprouts.setMatrixAt(si, tmp.matrix);
-        parts.push({ mesh: sprouts, index: si, matrix: tmp.matrix.clone() });
-        si++;
-      }
+      // age of the card → size of its sapling: a tiny shoot when new, full size at about two years
+      const age = Math.max(0, (now - Date.parse(p.item.created)) / YEAR) || 0;
+      const grown = Math.min(1, age / 2) ** 0.7;
+      const size = 0.35 + 0.95 * grown;
+      tmp.rotation.set(0, i * 2.4, 0);
+      tmp.scale.setScalar(size);
+      tmp.updateMatrix();
+      saplings.setMatrixAt(i, tmp.matrix);
+      sapTrunks.setMatrixAt(i, tmp.matrix);
+      parts.push({ mesh: sapTrunks, index: i, matrix: tmp.matrix.clone() });
+      // « En cours »: a fresh, light green; the others a deeper green, darker with age
+      setColor(
+        saplings,
+        i,
+        p.item.sprout ? 0xb6ec8e : c.setHex(0x8fd16b).lerp(new THREE.Color(0x4f9a4a), grown).getHex(),
+        c,
+      );
+      parts.push({ mesh: saplings, index: i, matrix: tmp.matrix.clone() });
       p.item.labels.forEach((l, k) =>
         addFruit(l, { x: p.pos.x + 0.55, y: p.pos.y + 0.2 + k * 0.05, z: p.pos.z }, k, parts, 0.8)
       );
-      const top = { x: p.pos.x, y: p.pos.y + 0.75, z: p.pos.z };
+      const top = { x: p.pos.x, y: p.pos.y + 0.63 + 0.72 * size, z: p.pos.z };
       items.push({
         item: p.item,
         kind: "pot",
         p: top,
-        perch: { x: p.pos.x, y: p.pos.y + 0.7, z: p.pos.z },
+        // the pigeon sits on the rim, next to the sapling
+        perch: { x: p.pos.x + 0.36, y: p.pos.y + 0.7, z: p.pos.z },
         tree: -1,
         list: p.item.list,
         sprout: p.item.sprout,
@@ -714,13 +739,14 @@ export function buildForest(
       });
       colliders.push({ x: p.pos.x, z: p.pos.z, r: 0.45, y0: p.pos.y - 1, y1: p.pos.y + 0.66 });
     });
-    for (const m of [pots, soil, sprouts, ...fruitMeshes.values()]) {
+    for (const m of [pots, soil, saplings, sapTrunks, ...fruitMeshes.values()]) {
       m.instanceMatrix.needsUpdate = true;
       if (m.instanceColor) m.instanceColor.needsUpdate = true;
     }
-    group.add(pots, soil, sprouts);
+    group.add(pots, soil, sapTrunks, saplings);
     addOutline(pots, 0.02);
-    addOutline(sprouts, 0.015);
+    addOutline(sapTrunks, 0.008);
+    addOutline(saplings, 0.012);
   }
 
   // Decor: grass tufts, flowers, clover patches, mushrooms, fallen leaves, rocks, bushes — off the Path,

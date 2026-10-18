@@ -27,7 +27,8 @@ interface Hook {
   error?: string;
   flyoverDone: boolean;
   state(): unknown;
-  autopilot(index: number): void;
+  autopilot(index: number, kind?: "branch" | "pot"): void;
+  teleport(index: number, kind?: "branch" | "pot"): void;
   skip(): void;
 }
 const hook: Hook = {
@@ -35,6 +36,7 @@ const hook: Hook = {
   flyoverDone: false,
   state: () => ({}),
   autopilot: () => {},
+  teleport: () => {},
   skip: () => {},
 };
 (globalThis as unknown as { __bastonks: Hook }).__bastonks = hook;
@@ -305,8 +307,16 @@ async function main() {
 
   // ---- autopilot (e2e and nothing else) -------------------------------------------------------------
   let autopilot: WorldItem | null = null;
-  hook.autopilot = (i: number) => {
-    autopilot = items.filter((it) => it.kind === "branch")[i] ?? null;
+  hook.autopilot = (i: number, kind: "branch" | "pot" = "branch") => {
+    autopilot = items.filter((it) => it.kind === kind)[i] ?? null;
+  };
+  /** Test hook: put the pigeon on the ground next to an item (for screenshots of distant places). */
+  hook.teleport = (i: number, kind: "branch" | "pot" = "pot") => {
+    const it = items.filter((x) => x.kind === kind)[i];
+    if (!it) return;
+    player.pos.set(it.perch.x - 1.6, groundHeight(it.perch.x - 1.6, it.perch.z - 1.2), it.perch.z - 1.2);
+    player.mode = "ground";
+    player.perch = null;
   };
   const pilot = (it: Intent): Intent => {
     if (!autopilot) return it;
