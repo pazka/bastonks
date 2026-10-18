@@ -24,6 +24,8 @@ export interface WorldItem {
   base?: V3;
   tree: number;
   week?: string;
+  /** The date written in its Tree's list name, if any (`YYYY-MM-DD`). */
+  listDate?: string | null;
   list?: string;
   sprout?: boolean;
   /** Instances to animate when this item grows in (New Growth). */
@@ -536,6 +538,7 @@ export function buildForest(
         base: b.base,
         tree: ti,
         week: t.tree.week,
+        listDate: t.tree.listDate,
         parts,
       });
     }

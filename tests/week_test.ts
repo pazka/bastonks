@@ -52,6 +52,7 @@ Deno.test("resolveWeek: the name's date when it fits the cards", () => {
   assertEquals(resolveWeek("DONE 25/11/2024", cards("2024-11-12", "2024-11-26")), {
     week: "2024-11-25",
     from: "name",
+    date: "2024-11-25",
   });
   assertEquals(resolveWeek("DONE 20/11/023", cards("2023-11-08", "2023-11-24")).week, "2023-11-20");
   assertEquals(resolveWeek("DONE 18/08//2025", cards("2025-08-04", "2025-08-19")).week, "2025-08-18");
@@ -61,12 +62,14 @@ Deno.test("resolveWeek: the name's date when it fits the cards", () => {
 Deno.test("resolveWeek: a wrong year is repaired from the cards (DONE 13/05/2023 holding May 2024)", () => {
   const r = resolveWeek("DONE 13/05/2023", cards("2024-05-02", "2024-05-17"));
   assertEquals(r.week, "2024-05-13");
+  assertEquals(r.date, "2024-05-13"); // the list's date, year repaired
 });
 
 Deno.test("resolveWeek: no date, or a date that cannot fit → from the cards", () => {
   assertEquals(resolveWeek("Vieux trucs", cards("2023-02-01", "2023-04-05")), {
     week: "2023-04-03",
     from: "cards",
+    date: null,
   });
   // 01/01/2020 fits no card year
   assertEquals(resolveWeek("DONE 01/01/2020", cards("2024-03-01", "2024-03-14")).from, "cards");

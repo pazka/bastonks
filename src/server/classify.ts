@@ -28,6 +28,7 @@ function toItem(c: CleanCard, labelIndex: Map<string, number>): Item {
     created: c.created,
     lastActivity: c.lastActivity,
     due: c.due,
+    start: c.start ?? null,
     archived: c.archived,
     attachments: c.attachments.map((
       a,
@@ -58,7 +59,7 @@ export function buildWorld(snap: CleanSnapshot, stale: boolean): World {
     const listDone = isDoneList(list);
     const done = cards.filter((c) => listDone || c.archived);
     if (done.length > 0) {
-      const { week, from } = resolveWeek(
+      const { week, from, date } = resolveWeek(
         list.name,
         done.map((c) => ({ created: new Date(c.created), lastActivity: new Date(c.lastActivity) })),
       );
@@ -67,6 +68,7 @@ export function buildWorld(snap: CleanSnapshot, stale: boolean): World {
         name: list.name,
         week,
         weekFrom: from,
+        listDate: date,
         season: seasonOf(week),
         archived: list.archived,
         branches: done.map((c) => toItem(c, labelIndex)),

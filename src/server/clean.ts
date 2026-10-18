@@ -22,6 +22,8 @@ export interface CleanCard {
   created: string;
   lastActivity: string;
   due: string | null;
+  /** Trello start date, if set (older snapshots lack it). */
+  start?: string | null;
   archived: boolean;
   pos: number;
   attachments: CleanAttachment[];
@@ -185,6 +187,7 @@ export function cleanBoard(raw: RawBoard, hash: IdHasher, now = new Date()): Cle
       created: created.toISOString(),
       lastActivity: iso(c.dateLastActivity, created),
       due: typeof c.due === "string" ? iso(c.due, created) : null,
+      start: typeof c.start === "string" ? iso(c.start, created) : null,
       archived: c.closed === true,
       pos: num(c.pos),
       attachments,

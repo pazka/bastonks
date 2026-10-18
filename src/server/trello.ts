@@ -27,6 +27,7 @@ export interface RawCard {
   pos?: number;
   dateLastActivity?: string;
   due?: string | null;
+  start?: string | null;
   cover?: { color?: string | null; [k: string]: unknown } | null;
   attachments?: RawAttachment[];
   // anything else Trello sends is ignored by the allowlist in clean.ts
@@ -103,7 +104,7 @@ export function boardQuery(): string {
     label_fields: "name,color",
     labels_limit: "1000",
     cards: "all",
-    card_fields: "name,desc,closed,idList,idLabels,pos,dateLastActivity,due,cover",
+    card_fields: "name,desc,closed,idList,idLabels,pos,dateLastActivity,due,start,cover",
     card_attachments: "true",
     card_attachment_fields: "name,mimeType,isUpload,url,bytes,previews",
     checklists: "all",

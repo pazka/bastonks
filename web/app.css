@@ -108,13 +108,18 @@ body.touch .stick.on { opacity: 1; }
 .celebrate p { font-family: var(--serif); font-size: clamp(1.1rem, 3vw, 1.8rem); color: #fff; text-shadow: 0 2px 14px rgba(40, 30, 20, .6); text-align: center; padding: 0 16px; animation: rise 1.2s ease; }
 .noscript { position: fixed; inset: 0; display: grid; place-items: center; text-align: center; padding: 16px; }
 
+/* touch, any orientation: the card never covers the ▲ ▼ buttons */
+body.touch .panel { right: calc(max(14px, env(safe-area-inset-right)) + 82px); max-height: calc(100dvh - 76px); }
 @media (max-width: 720px) {
-  .panel { left: 8px; right: 8px; top: auto; bottom: 8px; width: auto; max-height: 56vh; border-radius: 20px; animation-name: up; }
+  .panel { left: 8px; right: 8px; top: auto; bottom: 8px; width: auto; max-height: 56vh; max-height: 56dvh; border-radius: 20px; animation-name: up; }
+  /* touch: the card leaves the right-hand column to the ▲ ▼ buttons, which stay where the thumb expects them */
+  body.touch .panel { right: calc(max(14px, env(safe-area-inset-right)) + 78px); max-height: 56vh; max-height: 56dvh; }
+  body.touch.panel-open .prompt { bottom: calc(56dvh + 22px); }
   @keyframes up { from { opacity: 0; transform: translateY(20px); } }
   .counter { font-size: .78rem; top: calc(max(10px, env(safe-area-inset-top)) + 40px); }
   .stale { top: calc(max(10px, env(safe-area-inset-top)) + 76px); }
   .pill { font-size: .76rem; }
-  body.panel-open .touch-buttons, body.panel-open .tbtn.inspect { bottom: calc(56vh + 18px); }
+  body.panel-open .tbtn.inspect { right: max(18px, env(safe-area-inset-right)); bottom: calc(max(26px, env(safe-area-inset-bottom)) + 160px); }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .2s !important; }

@@ -282,13 +282,16 @@ export class UI {
     const dates = el("div", "dates");
     const line = (label: string, v: string) =>
       dates.append(el("div", "", `${label}${lang() === "fr" ? " : " : ": "}${v}`));
-    // one date: the oldest we know of — the Tree's week (from its list's name), the card's last activity,
-    // or its creation
-    const known = [it.created, it.lastActivity, w.kind === "branch" && w.week ? `${w.week}T12:00:00Z` : null]
-      .filter((d): d is string => !!d && !Number.isNaN(Date.parse(d)));
-    const oldest = known.reduce((a, b) => (Date.parse(b) < Date.parse(a) ? b : a));
-    line(s.date, fmtDate(oldest));
-    if (it.due) line(s.due, fmtDate(it.due));
+    // every date we know of, in the order they happened: creation, start, the date of its list (the week
+    // it was finished, as written on the list), due date, last activity — then whether it is archived
+    const all: [string, string][] = [[s.created, it.created]];
+    if (it.start) all.push([s.start, it.start]);
+    if (w.listDate) all.push([s.listDate, `${w.listDate}T12:00:00Z`]);
+    if (it.due) all.push([s.due, it.due]);
+    all.push([s.activity, it.lastActivity]);
+    all.filter(([, d]) => !Number.isNaN(Date.parse(d)))
+      .sort((a, b) => Date.parse(a[1]) - Date.parse(b[1]))
+      .forEach(([label, d]) => line(label, fmtDate(d)));
     if (it.archived) dates.append(el("div", "", s.archived));
     parts.push(el("h3", "", s.dates), dates);
     body.replaceChildren(...parts);

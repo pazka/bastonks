@@ -28,6 +28,8 @@ export interface Item {
   created: string;
   lastActivity: string;
   due: string | null;
+  /** Trello start date, if set. */
+  start: string | null;
   archived: boolean;
   attachments: Attachment[];
 }
@@ -42,6 +44,8 @@ export interface Tree {
   week: string;
   /** Where the Week came from: the list name, or the cards' dates. */
   weekFrom: "name" | "cards";
+  /** The date written in the list's name (`YYYY-MM-DD`), when there is one that fits its cards. */
+  listDate: string | null;
   season: Season;
   archived: boolean;
   branches: Item[];

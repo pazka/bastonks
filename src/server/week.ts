@@ -76,6 +76,8 @@ export function weekFromCards(cards: CardDates[]): Date {
 export interface WeekResult {
   week: string;
   from: "name" | "cards";
+  /** The date written in the list's name (year repaired if needed), `YYYY-MM-DD`; null if none fits. */
+  date: string | null;
 }
 
 /**
@@ -85,19 +87,20 @@ export interface WeekResult {
  */
 export function resolveWeek(listName: string, cards: CardDates[]): WeekResult {
   const named = parseNameDate(listName);
-  if (named && dateFits(named, cards)) return { week: weekOf(named), from: "name" };
+  const ymd = (d: Date) => d.toISOString().slice(0, 10);
+  if (named && dateFits(named, cards)) return { week: weekOf(named), from: "name", date: ymd(named) };
   if (named) {
     const years = new Set(cards.map((c) => c.created.getUTCFullYear()));
     for (const y of [...years].sort()) {
       for (const yy of [y, y + 1]) {
         const fixed = new Date(Date.UTC(yy, named.getUTCMonth(), named.getUTCDate()));
         if (fixed.getUTCMonth() === named.getUTCMonth() && dateFits(fixed, cards)) {
-          return { week: weekOf(fixed), from: "name" };
+          return { week: weekOf(fixed), from: "name", date: ymd(fixed) };
         }
       }
     }
   }
-  return { week: weekOf(weekFromCards(cards)), from: "cards" };
+  return { week: weekOf(weekFromCards(cards)), from: "cards", date: null };
 }
 
 /** Creation date of a Trello object, from the timestamp in the first 8 hex digits of its id. */
