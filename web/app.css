@@ -38,7 +38,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .pill { background: rgba(255, 250, 240, .82); border: 0; border-radius: 999px; padding: .38em .85em; font-size: .82rem; box-shadow: 0 2px 8px rgba(43, 42, 51, .12); }
 .pill.icon { width: 2.2em; padding: .38em 0; text-align: center; }
 .pill:focus-visible, .tbtn:focus-visible, .close:focus-visible, .skip:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-.prompt { position: absolute; left: 50%; bottom: max(28px, env(safe-area-inset-bottom)); transform: translateX(-50%); background: rgba(43, 42, 51, .78); color: #fff; font-size: .9rem; padding: .45em 1em; border-radius: 999px; }
+.prompt { position: absolute; left: 50%; bottom: max(28px, env(safe-area-inset-bottom)); transform: translate(-50%, 8px); background: rgba(255, 250, 240, .92); color: var(--ink); font-size: .92rem; padding: .55em 1.2em; border-radius: var(--radius); box-shadow: var(--shadow); opacity: 0; visibility: hidden; transition: opacity .45s ease, transform .45s ease, visibility 0s linear .45s; }
+.prompt.show { opacity: 1; visibility: visible; transform: translate(-50%, 0); transition: opacity .45s ease, transform .45s ease; }
 .toast { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); background: rgba(255, 250, 240, .92); padding: .6em 1.2em; border-radius: var(--radius); box-shadow: var(--shadow); font-size: .95rem; text-align: center; max-width: 86vw; animation: rise .5s ease; }
 @keyframes rise { from { opacity: 0; transform: translate(-50%, 8px); } }
 
@@ -91,7 +92,9 @@ body.touch .stick.on { opacity: 1; }
 .touch-buttons { position: fixed; right: max(18px, env(safe-area-inset-right)); bottom: max(26px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 14px; pointer-events: auto; }
 .tbtn { width: 62px; height: 62px; border-radius: 50%; border: 0; background: rgba(255, 250, 240, .82); box-shadow: var(--shadow); font-size: 1.3rem; touch-action: none; }
 .tbtn:active { transform: scale(.94); }
-.tbtn.inspect { position: fixed; right: calc(max(18px, env(safe-area-inset-right)) + 80px); bottom: max(40px, env(safe-area-inset-bottom)); width: auto; padding: 0 1.1em; border-radius: 999px; height: 50px; font-size: .95rem; background: var(--accent); color: #fff; pointer-events: auto; }
+.tbtn.inspect { opacity: 0; visibility: hidden; transition: opacity .4s ease, visibility 0s linear .4s; }
+.tbtn.inspect.show { opacity: 1; visibility: visible; transition: opacity .4s ease; }
+.tbtn.inspect { position: fixed; right: calc(max(18px, env(safe-area-inset-right)) + 80px); bottom: max(40px, env(safe-area-inset-bottom)); width: auto; padding: 0 1.1em; border-radius: 999px; height: 50px; font-size: .95rem; background: rgba(255, 250, 240, .92); color: var(--ink); box-shadow: var(--shadow); pointer-events: auto; }
 body.touch .prompt { display: none; }
 
 .fs-offer { position: absolute; left: 50%; bottom: calc(max(24px, env(safe-area-inset-bottom)) + 150px); transform: translateX(-50%); display: flex; align-items: center; gap: 8px; background: rgba(255, 250, 240, .9); padding: .5em .6em .5em 1em; border-radius: 999px; box-shadow: var(--shadow); font-size: .9rem; pointer-events: auto; white-space: nowrap; animation: rise .5s ease; }

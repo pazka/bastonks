@@ -166,10 +166,12 @@ export class UI {
     $("stale").textContent = t().stale;
   }
 
+  /** The E hint (or the touch button): fades in near a tree, fades out away from it. */
   setPrompt(visible: boolean, touch: boolean) {
-    $("prompt").hidden = !visible || touch;
-    $("prompt").textContent = t().inspectKey;
-    $("t-inspect").hidden = !visible || !touch;
+    const p = $("prompt");
+    if (p.textContent !== t().inspectKey) p.textContent = t().inspectKey;
+    p.classList.toggle("show", visible && !touch);
+    $("t-inspect").classList.toggle("show", visible && touch);
   }
 
   toast(text: string, ms = 3200) {

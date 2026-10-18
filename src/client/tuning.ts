@@ -17,8 +17,8 @@ export const TUNING = {
   // Glints on unfound items
   glintRange: 14,
 
-  /** E: the pigeon swoops to the closest Branch within this range (unfound ones first). */
-  swoopRange: 16,
+  /** E: offered only near a tree — the pigeon swoops to the closest Branch within this range (unfound first). */
+  swoopRange: 4.5,
 
   // Flyover durations (s)
   flyoverFirst: 24,

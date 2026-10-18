@@ -170,7 +170,7 @@ export class SoundBoard {
     this.windFilter.frequency.value = 380;
     this.windFilter.Q.value = 0.6;
     this.windGain = ctx.createGain();
-    this.windGain.gain.value = 0.04;
+    this.windGain.gain.value = 0.015;
     loop(0.5).connect(this.windFilter).connect(this.windGain).connect(this.ambience);
     // leaves: a soft high hiss that only really comes in with the gusts
     const hp = ctx.createBiquadFilter();
@@ -193,33 +193,51 @@ export class SoundBoard {
   setWind(g: number) {
     if (!this.ctx || !this.windGain || !this.leavesGain || !this.windFilter) return;
     const t = this.ctx.currentTime;
-    this.windGain.gain.setTargetAtTime(0.03 + g * 0.22, t, 0.4);
+    this.windGain.gain.setTargetAtTime(0.012 + g * 0.08, t, 0.6);
     this.windFilter.frequency.setTargetAtTime(300 + g * 700, t, 0.5);
-    this.leavesGain.gain.setTargetAtTime(0.003 + g * g * 0.07, t, 0.3);
+    this.leavesGain.gain.setTargetAtTime(0.002 + g * g * 0.03, t, 0.5);
   }
+
+  /**
+   * How lively the forest is right now (0.15..1): drifts slowly from calm, near-silent stretches to
+   * busier moments, so the soundscape breathes instead of repeating.
+   */
+  private activity = 0.5;
+  private activityTarget = 0.5;
+  private nextMood = 0;
 
   private forestEvents() {
     const ctx = this.ctx!;
     const now = ctx.currentTime;
+    if (now >= this.nextMood) {
+      this.activityTarget = Math.random() < 0.3 ? 0.15 : 0.3 + Math.random() * 0.7;
+      this.nextMood = now + 40 + Math.random() * 80;
+    }
+    this.activity += (this.activityTarget - this.activity) * 0.004; // ~30 s to drift (called every 120 ms)
+    const a = this.activity;
+    // sparser when calm: gaps stretch as activity falls
+    const gap = (min: number, spread: number) => (min + Math.random() * spread) / Math.max(0.2, a);
     if (now >= this.nextBird) {
-      const r = Math.random();
-      if (r < 0.45) this.birdChirps(now);
-      else if (r < 0.75) this.birdWarble(now);
-      else this.birdCall(now);
-      // birds answer each other now and then
-      this.nextBird = now + (Math.random() < 0.3 ? 0.8 + Math.random() * 1.5 : 4 + Math.random() * 10);
+      if (Math.random() < 0.4 + 0.6 * a) {
+        const r = Math.random();
+        if (r < 0.45) this.birdChirps(now);
+        else if (r < 0.75) this.birdWarble(now);
+        else this.birdCall(now);
+      }
+      // now and then a bird answers another
+      this.nextBird = now + (Math.random() < 0.15 * a ? 1 + Math.random() * 2 : gap(6, 14));
     }
     if (now >= this.nextWoodpecker) {
-      this.woodpecker(now);
-      this.nextWoodpecker = now + 45 + Math.random() * 70;
+      if (Math.random() < a) this.woodpecker(now);
+      this.nextWoodpecker = now + gap(70, 110);
     }
     if (now >= this.nextCuckoo) {
-      this.cuckoo(now);
-      this.nextCuckoo = now + 70 + Math.random() * 90;
+      if (Math.random() < a) this.cuckoo(now);
+      this.nextCuckoo = now + gap(110, 150);
     }
     if (now >= this.nextCrickets) {
-      this.crickets(now);
-      this.nextCrickets = now + 14 + Math.random() * 26;
+      if (Math.random() < 0.3 + 0.7 * a) this.crickets(now);
+      this.nextCrickets = now + gap(30, 45);
     }
   }
 
@@ -227,7 +245,8 @@ export class SoundBoard {
   private voice(vol: number): AudioNode {
     const ctx = this.ctx!;
     const g = ctx.createGain();
-    g.gain.value = vol * (0.35 + Math.random() * 0.65);
+    // distance (random) and the forest's current liveliness both shape the level
+    g.gain.value = vol * (0.25 + Math.random() * 0.75) * (0.45 + 0.55 * this.activity);
     const pan = ctx.createStereoPanner();
     pan.pan.value = Math.random() * 1.6 - 0.8;
     g.connect(pan).connect(this.ambience!);

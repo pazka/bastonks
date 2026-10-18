@@ -120,13 +120,14 @@ interface Writing {
   after?: (g: CanvasRenderingContext2D, t: number) => void;
 }
 
-function redraw(w: Writing, now: number) {
+/** `live` false (a struggling device): the words appear at once instead of being traced glyph by glyph. */
+function redraw(w: Writing, now: number, live: boolean) {
   if (w.done || w.start < 0) return;
-  const n = (now - w.start) * w.speed;
+  const n = live ? (now - w.start) * w.speed : Infinity;
   const g = w.g;
   g.clearRect(0, 0, w.canvas.width, w.canvas.height);
   w.glyphs.forEach((gl, i) => drawGlyph(g, gl, i, Math.max(0, Math.min(1, n - i))));
-  const extra = (n - w.glyphs.length) / (w.speed * 1.5);
+  const extra = live ? (n - w.glyphs.length) / (w.speed * 1.5) : 1;
   if (w.after) w.after(g, Math.max(0, Math.min(1, extra)));
   w.tex.needsUpdate = true;
   if (n >= w.glyphs.length + 1 && (!w.after || extra >= 1)) w.done = true;
@@ -137,6 +138,8 @@ export class PathWords {
   private slots: { at: V3; dir: { x: number; z: number }; week: string }[];
   private pool: { mesh: THREE.Mesh; w: Writing; tree: number; text: string }[] = [];
   private ring: Writing;
+  /** Trace the letters live (turned off when the frame rate is low). */
+  live = true;
 
   constructor(layout: Layout, epigraph: string[]) {
     // a date never lands inside the epigraph's clearing: slide it along the Path, out of the ring
@@ -160,7 +163,7 @@ export class PathWords {
         tex: texture(canvas),
         glyphs: [],
         start: -1,
-        speed: 22,
+        speed: 15,
         done: true,
       };
       // stretched along the Path like a road marking, so it reads normally from the pigeon's low viewpoint
@@ -210,7 +213,7 @@ export class PathWords {
       tex: texture(canvas),
       glyphs,
       start: -1,
-      speed: glyphs.length / 8, // the whole citation is traced in about eight seconds
+      speed: glyphs.length / 10.5, // the whole citation is traced in about ten seconds
       done: false,
       // then a wobbly circle is drawn round it, closing the ring
       after: (g, t) => {
@@ -247,13 +250,13 @@ export class PathWords {
   }
 
   update(now: number, pigeon: THREE.Vector3 | null, label: (week: string) => string) {
-    redraw(this.ring, now);
-    // the nearest Trees within ~20 units get their date written on the Path
+    redraw(this.ring, now, this.live);
+    // the nearest Trees within ~11 units get their date written on the Path
     const near: { i: number; d: number }[] = [];
     if (pigeon) {
       this.slots.forEach((s, i) => {
         const d = Math.hypot(s.at.x - pigeon.x, s.at.z - pigeon.z);
-        if (d < 20) near.push({ i, d });
+        if (d < 11) near.push({ i, d });
       });
     }
     near.sort((a, b) => a.d - b.d);
@@ -274,9 +277,9 @@ export class PathWords {
         p.mesh.rotation.copy(fresh.rotation);
         (fresh.material as THREE.Material).dispose();
       }
-      redraw(p.w, now);
-      // moderately close: fades in between 20 and 12 units
-      (p.mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, Math.min(0.9, (20 - d) / 8));
+      redraw(p.w, now, this.live);
+      // close by: fades in between 11 and 6 units
+      (p.mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, Math.min(0.9, (11 - d) / 5));
       p.mesh.visible = true;
     }
     for (const p of this.pool) if (p.tree === -1) p.mesh.visible = false;

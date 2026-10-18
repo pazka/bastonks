@@ -148,6 +148,7 @@ async function main() {
   );
   scene.add(shadow);
   const words = new PathWords(layout, EPIGRAPH);
+  if (lowres) words.live = false;
   scene.add(words.group);
 
   const glints = new Glints(forest.items, pixelRatio * 2);
@@ -197,13 +198,12 @@ async function main() {
     }
   };
   player.onLand = () => {
-    audio.land();
     if (player.perch) {
-      // the branch takes the pigeon's weight: it swings, a few leaves let go, the foliage rustles
+      // the branch takes the pigeon's weight: it swings and a few leaves let go (silently)
       forest.bounce(player.perch.item, performance.now() / 1000);
       flutter.burst(player.perch.item.p, 3 + Math.floor(Math.random() * 3), leafPalette(player.perch.item));
-      audio.rustle(0.6);
     } else if (player.mode === "ground") {
+      audio.land();
       flutter.burst(player.pos, 4, [COLORS.grassDark, COLORS.grass, 0xffffff, 0xffe08a], 1.2, 0.25);
     }
   };
@@ -378,6 +378,7 @@ async function main() {
     acc = 0;
     if (fps < 48 && qualityStep < 4) {
       qualityStep++;
+      words.live = false; // a struggling device: words appear at once instead of being traced
       if (pixelRatio > 1) {
         pixelRatio = Math.max(1, pixelRatio - 0.25);
         renderer.setPixelRatio(pixelRatio);
@@ -558,7 +559,7 @@ async function main() {
     sky.position.copy(camera.position);
 
     renderer.render(scene, camera);
-    if (!inFlyover) adapt(dt);
+    adapt(dt); // also during the intro, so a slow device stops tracing letters live before the citation
     requestAnimationFrame(frame);
   };
 
