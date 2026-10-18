@@ -282,8 +282,12 @@ export class UI {
     const dates = el("div", "dates");
     const line = (label: string, v: string) =>
       dates.append(el("div", "", `${label}${lang() === "fr" ? " : " : ": "}${v}`));
-    line(s.created, fmtDate(it.created));
-    line(s.activity, fmtDate(it.lastActivity));
+    // one date: the oldest we know of — the Tree's week (from its list's name), the card's last activity,
+    // or its creation
+    const known = [it.created, it.lastActivity, w.kind === "branch" && w.week ? `${w.week}T12:00:00Z` : null]
+      .filter((d): d is string => !!d && !Number.isNaN(Date.parse(d)));
+    const oldest = known.reduce((a, b) => (Date.parse(b) < Date.parse(a) ? b : a));
+    line(s.date, fmtDate(oldest));
     if (it.due) line(s.due, fmtDate(it.due));
     if (it.archived) dates.append(el("div", "", s.archived));
     parts.push(el("h3", "", s.dates), dates);
