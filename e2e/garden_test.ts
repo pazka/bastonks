@@ -85,12 +85,19 @@ Deno.test({
 
       // The Pigeon flies to a Branch (real controls, driven by the autopilot) and inspects it
       await page.evaluate(() => (globalThis as any).__bastonks.autopilot(3));
-      await page.waitForFunction(() => (globalThis as any).__bastonks.state().panelOpen, null, {
-        timeout: 150_000,
-        polling: 500,
-      });
+      await page.waitForFunction(
+        () => {
+          const s = (globalThis as any).__bastonks.state();
+          return s.panelOpen && s.mode === "perch";
+        },
+        null,
+        {
+          timeout: 150_000,
+          polling: 500,
+        },
+      );
       const s1 = await page.evaluate(() => (globalThis as any).__bastonks.state());
-      assert(["perch", "fly"].includes(s1.mode), s1.mode); // perched, or hovering at the branch
+      assertEquals(s1.mode, "perch");
       assert(s1.found >= 1);
       assert(await page.isVisible("#panel"));
       const panelTitle = await page.textContent("#panel h2");

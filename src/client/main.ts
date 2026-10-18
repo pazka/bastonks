@@ -311,7 +311,7 @@ async function main() {
       upPressed: player.mode === "ground" || (perchedElsewhere && dy > 0),
       down: dy < -0.8,
       downPressed: perchedElsewhere && dy <= 0,
-      inspect: there && h < 0.8,
+      inspect: false, // the card opens by perching, like a visitor's would
     };
   };
 
