@@ -60,9 +60,9 @@ export class Input {
     canvas.addEventListener("pointermove", (e) => {
       if (e.pointerType === "touch") return this.touchMove(e);
       if (!this.dragging) return;
-      // default: drag right → turn right, drag up → camera rises (each axis can be inverted in Controls)
+      // computer default: the view follows the drag (each axis can be inverted in Controls)
       this.yaw += e.movementX * 0.005 * this.lookX;
-      this.pitch -= e.movementY * 0.004 * this.lookY;
+      this.pitch += e.movementY * 0.004 * this.lookY;
     });
     const end = (e: PointerEvent) => {
       if (e.pointerType === "touch") return this.touchEnd(e);
@@ -101,8 +101,9 @@ export class Input {
       const [dx, dy] = this.stickVec();
       this.knob.style.transform = `translate(${dx * 40}px, ${dy * 40}px)`;
     } else if (e.pointerId === this.look.id) {
-      this.yaw -= (e.clientX - this.look.x) * 0.008;
-      this.pitch -= (e.clientY - this.look.y) * 0.006;
+      // touch: the camera moves the other way round from the mouse, which feels natural under a finger
+      this.yaw += (e.clientX - this.look.x) * 0.008;
+      this.pitch += (e.clientY - this.look.y) * 0.006;
       this.look.x = e.clientX;
       this.look.y = e.clientY;
     }

@@ -7,6 +7,12 @@
 <meta name="description" content="Un jardin poétique né d'un travail de thèse.">
 <title>bastonks</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#f3e6cf">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="bastonks">
 <link rel="stylesheet" href="/app.css?v=@@CSS_HASH@@">
 </head>
 <body>
@@ -26,6 +32,7 @@
   <div class="counter" id="counter" aria-live="polite"></div>
   <div class="stale" id="stale" hidden></div>
   <div class="hud-buttons">
+    <button type="button" id="btn-full" class="pill icon" hidden>⛶</button>
     <button type="button" id="btn-lang" class="pill"></button>
     <button type="button" id="btn-mute" class="pill icon" aria-pressed="false"></button>
     <button type="button" id="btn-help" class="pill icon" aria-haspopup="dialog">?</button>
@@ -33,6 +40,11 @@
   </div>
   <div class="prompt" id="prompt" hidden></div>
   <div class="toast" id="toast" hidden></div>
+  <div class="fs-offer" id="fs-offer" hidden>
+    <span id="fs-text"></span>
+    <button type="button" class="pill" id="fs-yes"></button>
+    <button type="button" class="pill" id="fs-no"></button>
+  </div>
 </div>
 
 <aside id="panel" class="panel" hidden aria-live="polite">

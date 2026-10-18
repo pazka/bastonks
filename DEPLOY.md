@@ -136,9 +136,8 @@ per token). The board call uses Trello's nested resources (`lists=all`, `cards=a
 `checklists=all`, `labels=all`); Trello's docs site was not reachable from the build sandbox, so verify the first
 real fetch on the box: `healthz.trees`/`branches` should match the board (~165 Trees, ~2 100 Branches).
 
-**Exceptional Cards:** `config/exceptional.json` holds Trello card ids. The six committed ids are placeholders
-matching the synthetic test board, so production shows **no Golden Peanut** until the owner puts real ids there
-(then release). Boost strengths and other feel values: `src/client/tuning.ts`.
+**Golden Peanuts / Exceptional Cards:** dropped at the owner's request (the full collection of cards is the
+goal). Feel values (speeds, ranges, intro length): `src/client/tuning.ts`.
 
 **Supply chain:** third-party dependencies are `three@0.186.1` (runtime, bundled), `@types/three` (types) and
 `playwright-core@1.64.0` (e2e only, owner-approved; never in the image), plus Deno's first-party `@std/http` /
@@ -151,7 +150,9 @@ updates after a 7-day cooldown.
 
 **Assets & audio:** all geometry, the Pigeon and the music/SFX are generated in code (CC0, credited in the About
 panel); no font, CDN or analytics. The Pigeon is behind a `PigeonModel` seam (`src/client/pigeon.ts`) for a glTF
-later. Progress (Found, peanuts, ids seen last visit, mute, language) lives in the visitor's localStorage only.
+later. Progress (Found, ids seen last visit, mute, language, mouse options) lives in the visitor's localStorage only.
+On phones a fullscreen offer appears after the intro (where the browser allows it); `manifest.webmanifest`
+lets "Add to Home Screen" open the garden fullscreen (iOS Safari has no fullscreen API for pages).
 
 **Known limits:** the image is ~45 MB (Deno runtime); a first visit downloads ~600 KB of JS (gzip ~150 KB) and the
 world JSON (~0.5 MB, compressed by the server); WebGL is required. Mobile quality adapts (pixel-ratio cap 1.5,

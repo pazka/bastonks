@@ -139,7 +139,17 @@ export class PathWords {
   private ring: Writing;
 
   constructor(layout: Layout, epigraph: string[]) {
-    this.slots = layout.trees.map((t) => ({ ...onPath(layout, t.pos), week: t.tree.week }));
+    // a date never lands inside the epigraph's clearing: slide it along the Path, out of the ring
+    this.slots = layout.trees.map((t) => {
+      const slot = { ...onPath(layout, t.pos), week: t.tree.week };
+      const d = Math.hypot(slot.at.x - layout.start.x, slot.at.z - layout.start.z);
+      const clear = CLEARING_RADIUS + 1.4;
+      if (d < clear) {
+        const push = clear - d + 0.2;
+        slot.at = { x: slot.at.x + slot.dir.x * push, y: slot.at.y, z: slot.at.z + slot.dir.z * push };
+      }
+      return slot;
+    });
     for (let i = 0; i < 6; i++) {
       const canvas = document.createElement("canvas");
       canvas.width = 1024;

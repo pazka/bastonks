@@ -1,0 +1,11 @@
+{
+  "name": "bastonks",
+  "short_name": "bastonks",
+  "description": "Un jardin poétique né d'un travail de thèse.",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#f3e6cf",
+  "theme_color": "#f3e6cf",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

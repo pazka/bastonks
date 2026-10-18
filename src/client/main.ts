@@ -264,6 +264,7 @@ async function main() {
     document.body.classList.add("touch");
     input.touchMode = true;
   }
+  ui.setupFullscreen(coarse);
 
   // ---- flyover ----------------------------------------------------------------------------------------
   const startPos = new THREE.Vector3(layout.start.x, layout.start.y, layout.start.z);
@@ -288,6 +289,7 @@ async function main() {
     hook.flyoverDone = true;
     ui.endFlyover();
     ui.showTouch(input.touchMode || coarse);
+    ui.offerFullscreen(input.touchMode || coarse);
     chase.snapBehind(player.pos, player.yaw);
     growStart = performance.now() / 1000;
     words.revealEpigraph(growStart);

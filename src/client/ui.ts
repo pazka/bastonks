@@ -78,6 +78,44 @@ export class UI {
     document.querySelector(".title-card")!.classList.toggle("on", show);
   }
 
+  // ---- fullscreen (offered on phones and tablets, where the browser allows it) ------------------------
+
+  private canFullscreen() {
+    const d = document as Document & { webkitFullscreenEnabled?: boolean };
+    return !!(d.fullscreenEnabled || d.webkitFullscreenEnabled);
+  }
+
+  private isFullscreen() {
+    const d = document as Document & { webkitFullscreenElement?: Element };
+    return !!(d.fullscreenElement || d.webkitFullscreenElement);
+  }
+
+  private goFullscreen() {
+    const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => void };
+    $("fs-offer").hidden = true;
+    if (el.requestFullscreen) el.requestFullscreen({ navigationUI: "hide" }).catch(() => {});
+    else el.webkitRequestFullscreen?.();
+  }
+
+  /** Touch devices: a fullscreen button in the HUD, and a one-time offer once the intro is over. */
+  setupFullscreen(touch: boolean) {
+    if (!touch || !this.canFullscreen()) return;
+    const btn = $("btn-full");
+    btn.hidden = false;
+    btn.addEventListener("click", () => {
+      if (this.isFullscreen()) document.exitFullscreen?.().catch(() => {});
+      else this.goFullscreen();
+    });
+    $("fs-yes").addEventListener("click", () => this.goFullscreen());
+    $("fs-no").addEventListener("click", () => ($("fs-offer").hidden = true));
+  }
+
+  offerFullscreen(touch: boolean) {
+    if (!touch || !this.canFullscreen() || this.isFullscreen()) return;
+    $("fs-offer").hidden = false;
+    setTimeout(() => ($("fs-offer").hidden = true), 12000);
+  }
+
   endFlyover() {
     document.querySelector(".title-card")!.classList.remove("on");
     setTimeout(() => ($("flyover").hidden = true), 1200);
@@ -92,6 +130,11 @@ export class UI {
     $("btn-lang").textContent = s.lang;
     $("btn-lang").setAttribute("lang", lang() === "fr" ? "en" : "fr");
     $("btn-about").textContent = s.about;
+    $("btn-full").title = s.fullscreen;
+    $("btn-full").setAttribute("aria-label", s.fullscreen);
+    $("fs-text").textContent = s.fullscreenOffer;
+    $("fs-yes").textContent = s.yes;
+    $("fs-no").textContent = s.no;
     $("btn-help").title = s.help;
     $("btn-help").setAttribute("aria-label", s.help);
     this.setMuted(muted);

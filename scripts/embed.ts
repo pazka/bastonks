@@ -6,6 +6,7 @@ const files: [string, string, string, boolean][] = [
   ["/app.js", "dist/web/app.js", "text/javascript; charset=utf-8", true],
   ["/app.css", "web/app.css", "text/css; charset=utf-8", true],
   ["/favicon.svg", "web/favicon.svg", "image/svg+xml", true],
+  ["/manifest.webmanifest", "web/manifest.webmanifest", "application/manifest+json", false],
 ];
 
 async function hash(b: Uint8Array<ArrayBuffer>) {
