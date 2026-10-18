@@ -22,22 +22,53 @@ export function toon(color: THREE.ColorRepresentation, opts: THREE.MeshToonMater
   return new THREE.MeshToonMaterial({ color, gradientMap: gradientMap(), ...opts });
 }
 
+/**
+ * Toon material that dissolves (dithered) when the camera comes within `near` units: foliage never blocks
+ * the view of the pigeon perched among the branches.
+ */
+export function toonNearFade(
+  color: THREE.ColorRepresentation,
+  near = 2.6,
+  opts: THREE.MeshToonMaterialParameters = {},
+) {
+  const m = toon(color, opts);
+  m.onBeforeCompile = (shader) => {
+    shader.uniforms.uNear = { value: near };
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", "#include <common>\nuniform float uNear;")
+      .replace(
+        "#include <clipping_planes_fragment>",
+        `#include <clipping_planes_fragment>
+        {
+          float camDist = length(vViewPosition);
+          if (camDist < uNear) {
+            float n = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+            if (n > smoothstep(uNear * 0.35, uNear, camDist)) discard;
+          }
+        }`,
+      );
+  };
+  m.customProgramCacheKey = () => `toon-near-fade-${near}`;
+  return m;
+}
+
 const outlineMaterials = new Map<string, THREE.ShaderMaterial>();
 
 /** Outline material: pushes vertices along their (smoothed) normals and draws back faces in a dark ink. */
-export function outlineMaterial(thickness: number, color = 0x2b2a33): THREE.ShaderMaterial {
-  const key = `${thickness}:${color}`;
+export function outlineMaterial(thickness: number, color = 0x2b2a33, near = 0): THREE.ShaderMaterial {
+  const key = `${thickness}:${color}:${near}`;
   const hit = outlineMaterials.get(key);
   if (hit) return hit;
   const m = new THREE.ShaderMaterial({
     uniforms: THREE.UniformsUtils.merge([
       THREE.UniformsLib.fog,
-      { thickness: { value: thickness }, ink: { value: new THREE.Color(color) } },
+      { thickness: { value: thickness }, ink: { value: new THREE.Color(color) }, uNear: { value: near } },
     ]),
     vertexShader: /* glsl */ `
       #include <common>
       #include <fog_pars_vertex>
       uniform float thickness;
+      varying float vCamDist;
       void main() {
         vec4 p = vec4(position, 1.0);
         vec3 n = normal;
@@ -50,6 +81,7 @@ export function outlineMaterial(thickness: number, color = 0x2b2a33): THREE.Shad
         // Thickness grows a little with distance so far outlines stay visible but thin.
         float w = thickness * clamp(-mvPosition.z * 0.04, 1.0, 3.0);
         mvPosition.xyz += vn * w;
+        vCamDist = -mvPosition.z;
         gl_Position = projectionMatrix * mvPosition;
         #include <fog_vertex>
       }`,
@@ -57,7 +89,10 @@ export function outlineMaterial(thickness: number, color = 0x2b2a33): THREE.Shad
       #include <common>
       #include <fog_pars_fragment>
       uniform vec3 ink;
+      uniform float uNear;
+      varying float vCamDist;
       void main() {
+        if (vCamDist < uNear) discard; // matches the dissolving foliage (toonNearFade)
         gl_FragColor = vec4(ink, 1.0);
         #include <fog_fragment>
         #include <colorspace_fragment>
@@ -84,10 +119,11 @@ export function outlineInstanced(
   mesh: THREE.InstancedMesh,
   thickness: number,
   color?: number,
+  near = 0,
 ): THREE.InstancedMesh {
   const o = new THREE.InstancedMesh(
     outlineGeometry(mesh.geometry),
-    outlineMaterial(thickness, color),
+    outlineMaterial(thickness, color, near),
     mesh.count,
   );
   o.instanceMatrix = mesh.instanceMatrix;

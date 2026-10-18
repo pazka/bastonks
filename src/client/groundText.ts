@@ -116,7 +116,7 @@ export class PathWords {
     );
     this.epigraph.renderOrder = 3;
     const ex = s.x + dir.x * 7.5, ez = s.z + dir.z * 7.5;
-    this.epigraphBase = groundHeight(ex, ez) + 1.75;
+    this.epigraphBase = groundHeight(ex, ez) + 1.45;
     this.epigraph.position.set(ex, this.epigraphBase, ez);
     this.epigraph.rotation.y = Math.atan2(-dir.x, -dir.z); // faces the pigeon's starting point
     this.group.add(this.epigraph);

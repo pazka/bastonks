@@ -6,7 +6,7 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import type { Fruit, Item, World } from "../shared/types.ts";
 import { groundHeight, hashStr, type Layout, rng, type V3 } from "./layout.ts";
 import { COLORS, SEASON_LEAVES, trelloColor } from "./palette.ts";
-import { outlineInstanced, outlineMesh, toon } from "./toon.ts";
+import { outlineInstanced, outlineMesh, toon, toonNearFade } from "./toon.ts";
 
 export type ItemKind = "branch" | "pot";
 
@@ -374,7 +374,7 @@ export function buildForest(
   const limbs = instanced(limbGeo, toon(0xffffff), nBranches, "limbs");
   // Leaves: per branch 2 clusters + per tree 2 crown clusters
   const leafGeo = new THREE.IcosahedronGeometry(1, 0);
-  const leaves = instanced(leafGeo, toon(0xffffff), nBranches * 2 + nTrees * 2, "leaves");
+  const leaves = instanced(leafGeo, toonNearFade(0xffffff), nBranches * 2 + nTrees * 2, "leaves");
   // Fruits by species
   const species = world.species;
   const fruitCounts = new Map<Fruit, number>();
@@ -519,7 +519,7 @@ export function buildForest(
   group.add(shadows, trunks, limbs, leaves, ...fruitMeshes.values());
   addOutline(trunks, 0.035);
   addOutline(limbs, 0.03);
-  addOutline(leaves, 0.03);
+  if (quality.outlines) group.add(outlineInstanced(leaves, 0.03, undefined, 2.0));
   for (const m of fruitMeshes.values()) addOutline(m, 0.012);
 
   // Greenhouse
