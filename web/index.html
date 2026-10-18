@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<meta name="description" content="Un jardin poétique né d'un travail de thèse.">
+<title>bastonks</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/app.css?v=@@CSS_HASH@@">
+</head>
+<body>
+<canvas id="scene" aria-label="Jardin en 3D"></canvas>
+
+<div id="loading" class="loading" role="status"><span class="leaf"></span><span id="loading-text">Le jardin pousse…</span></div>
+
+<div id="flyover" class="flyover" hidden>
+  <div class="title-card">
+    <h1 id="thesis-title"></h1>
+    <p class="author" id="author"></p>
+    <blockquote class="epigraph" id="epigraph"></blockquote>
+  </div>
+  <button id="skip" class="skip" type="button"></button>
+</div>
+
+<div id="hud" class="hud" hidden>
+  <div class="counter" id="counter" aria-live="polite"></div>
+  <div class="stale" id="stale" hidden></div>
+  <div class="hud-buttons">
+    <button type="button" id="btn-lang" class="pill"></button>
+    <button type="button" id="btn-mute" class="pill icon" aria-pressed="false"></button>
+    <button type="button" id="btn-help" class="pill icon" aria-haspopup="dialog">?</button>
+    <button type="button" id="btn-about" class="pill"></button>
+  </div>
+  <div class="prompt" id="prompt" hidden></div>
+  <div class="toast" id="toast" hidden></div>
+</div>
+
+<aside id="panel" class="panel" hidden aria-live="polite">
+  <button type="button" class="close" id="panel-close" aria-label="Fermer">×</button>
+  <div class="panel-body" id="panel-body"></div>
+</aside>
+
+<dialog id="about" class="sheet">
+  <button type="button" class="close" data-close aria-label="Fermer">×</button>
+  <div id="about-body"></div>
+</dialog>
+
+<dialog id="help" class="sheet">
+  <button type="button" class="close" data-close aria-label="Fermer">×</button>
+  <div id="help-body"></div>
+</dialog>
+
+<div id="touch" class="touch-ui" hidden>
+  <div id="stick" class="stick"><div id="knob" class="knob"></div></div>
+  <div class="touch-buttons">
+    <button type="button" id="t-up" class="tbtn" aria-label="Monter">▲</button>
+    <button type="button" id="t-down" class="tbtn" aria-label="Descendre">▼</button>
+  </div>
+  <button type="button" id="t-inspect" class="tbtn inspect" hidden></button>
+</div>
+
+<div id="celebrate" class="celebrate" hidden></div>
+<noscript><p class="noscript">Ce jardin a besoin de JavaScript et de WebGL. / This garden needs JavaScript and WebGL.</p></noscript>
+<script type="module" src="/app.js?v=@@JS_HASH@@"></script>
+</body>
+</html>
