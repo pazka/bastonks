@@ -338,7 +338,7 @@ export class ChaseCamera {
       while (d > Math.PI) d -= Math.PI * 2;
       while (d < -Math.PI) d += Math.PI * 2;
       this.yaw += d * Math.min(1, dt * 2.2);
-      this.pitch += (0.42 - this.pitch) * Math.min(1, dt * 1.5);
+      this.pitch += (0.62 - this.pitch) * Math.min(1, dt * 1.5);
     } else if (moving && this.idle > 1.2) {
       let d = pigeonYaw - this.yaw;
       while (d > Math.PI) d -= Math.PI * 2;
