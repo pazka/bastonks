@@ -60,8 +60,9 @@ export class Input {
     canvas.addEventListener("pointermove", (e) => {
       if (e.pointerType === "touch") return this.touchMove(e);
       if (!this.dragging) return;
-      // computer default: the view follows the drag (each axis can be inverted in Controls)
-      this.yaw += e.movementX * 0.005 * this.lookX;
+      // computer default: horizontal drag turns the other way, vertical follows the drag (each axis can be
+      // inverted in Controls; touch has its own directions)
+      this.yaw -= e.movementX * 0.005 * this.lookX;
       this.pitch += e.movementY * 0.004 * this.lookY;
     });
     const end = (e: PointerEvent) => {
