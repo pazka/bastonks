@@ -87,8 +87,8 @@ export class PathWords {
     const { tex } = canvasTexture(1024, 720, (g) => {
       // a soft paper-coloured halo keeps the words legible over the scenery
       const halo = g.createRadialGradient(512, 360, 60, 512, 360, 520);
-      halo.addColorStop(0, "rgba(255, 248, 232, 0.6)");
-      halo.addColorStop(0.7, "rgba(255, 248, 232, 0.3)");
+      halo.addColorStop(0, "rgba(255, 248, 232, 0.85)");
+      halo.addColorStop(0.65, "rgba(255, 248, 232, 0.55)");
       halo.addColorStop(1, "rgba(255, 248, 232, 0)");
       g.fillStyle = halo;
       g.fillRect(0, 0, 1024, 720);
@@ -98,12 +98,14 @@ export class PathWords {
       g.shadowBlur = 10;
       epigraph.forEach((line, i) => {
         const italic = i < 2;
-        g.font = `${italic ? "italic " : ""}${i < 2 ? 76 : 54}px "Iowan Old Style", Palatino, Georgia, serif`;
-        g.fillText(line, 512, 120 + i * (i < 2 ? 112 : 96) + (i >= 2 ? 60 : 0));
+        g.font = `${italic ? "italic 600 " : "500 "}${
+          i < 2 ? 80 : 56
+        }px "Iowan Old Style", Palatino, Georgia, serif`;
+        g.fillText(line, 512, 130 + (i < 2 ? i * 104 : 2 * 104 + 60 + (i - 2) * 82), 980);
       });
     });
     this.epigraph = new THREE.Mesh(
-      new THREE.PlaneGeometry(3.4, 2.4),
+      new THREE.PlaneGeometry(4.6, 3.24),
       new THREE.MeshBasicMaterial({
         map: tex,
         transparent: true,
@@ -114,7 +116,7 @@ export class PathWords {
     );
     this.epigraph.renderOrder = 3;
     const ex = s.x + dir.x * 7.5, ez = s.z + dir.z * 7.5;
-    this.epigraphBase = groundHeight(ex, ez) + 1.3;
+    this.epigraphBase = groundHeight(ex, ez) + 1.75;
     this.epigraph.position.set(ex, this.epigraphBase, ez);
     this.epigraph.rotation.y = Math.atan2(-dir.x, -dir.z); // faces the pigeon's starting point
     this.group.add(this.epigraph);

@@ -472,6 +472,12 @@ async function main() {
       if (player.perch.item !== lastPerched) {
         lastPerched = player.perch.item;
         inspect(player.perch.item as WorldItem & { idx: number });
+        // frame the branch from the side, from outside the crown (its own leaf cluster stays out of the way)
+        const tr = layout.trees[player.perch.item.tree];
+        if (tr) {
+          const out = Math.atan2(player.perch.p.x - tr.pos.x, player.perch.p.z - tr.pos.z);
+          chase.perchYaw = out + Math.PI - 1.15;
+        } else chase.perchYaw = null;
       }
     } else if (!player.hopping) lastPerched = null;
 

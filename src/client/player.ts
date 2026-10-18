@@ -324,6 +324,8 @@ export class ChaseCamera {
 
   /** Perched among the leaves, the camera comes closer so foliage does not fill the view. */
   perched = false;
+  /** When perched: the yaw that shows the branch from the side, outside the crown (null = follow the pigeon). */
+  perchYaw: number | null = null;
 
   update(dt: number, target: THREE.Vector3, pigeonYaw: number, moving: boolean, flying: boolean, it: Intent) {
     if (it.yaw || it.pitch) this.idle = 0;
@@ -331,7 +333,13 @@ export class ChaseCamera {
     this.yaw += it.yaw;
     this.pitch = Math.max(-0.35, Math.min(1.2, this.pitch + it.pitch));
     this.dist = Math.max(2.2, Math.min(14, this.dist * (1 + it.zoom)));
-    if (moving && this.idle > 1.2) {
+    if (this.perched && this.perchYaw !== null && this.idle > 1.2) {
+      let d = this.perchYaw - this.yaw;
+      while (d > Math.PI) d -= Math.PI * 2;
+      while (d < -Math.PI) d += Math.PI * 2;
+      this.yaw += d * Math.min(1, dt * 2.2);
+      this.pitch += (0.42 - this.pitch) * Math.min(1, dt * 1.5);
+    } else if (moving && this.idle > 1.2) {
       let d = pigeonYaw - this.yaw;
       while (d > Math.PI) d -= Math.PI * 2;
       while (d < -Math.PI) d += Math.PI * 2;
