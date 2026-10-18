@@ -23,7 +23,10 @@ const coarse = matchMedia("(pointer: coarse)").matches;
 
 /** Test hook (Playwright e2e): read-only state plus an autopilot that drives the real controls. */
 interface Hook {
+  /** The world is built and the enter button is offered. */
   ready: boolean;
+  /** The visitor pressed it: the intro plays. */
+  entered: boolean;
   error?: string;
   flyoverDone: boolean;
   state(): unknown;
@@ -33,6 +36,7 @@ interface Hook {
 }
 const hook: Hook = {
   ready: false,
+  entered: false,
   flyoverDone: false,
   state: () => ({}),
   autopilot: () => {},
@@ -283,7 +287,7 @@ async function main() {
   let inFlyover = true;
   input.enabled = false;
   ui.showTitles(false);
-  setTimeout(() => ui.showTitles(true), 400);
+  let entered = false; // the intro waits behind the loading screen for the enter button
   const endFlyover = () => {
     if (!inFlyover) return;
     inFlyover = false;
@@ -440,7 +444,7 @@ async function main() {
     const time = now;
 
     if (inFlyover) {
-      flyT += dt / flyDuration;
+      if (entered) flyT += dt / flyDuration;
       const u = Math.min(1, flyT);
       const c = intro(u);
       camera.position.copy(c.pos);
@@ -571,9 +575,14 @@ async function main() {
     requestAnimationFrame(frame);
   };
 
-  ui.loaded();
-  hook.ready = true;
   requestAnimationFrame(frame);
+  ui.offerEnter(() => {
+    onGesture(); // music and forest start with the intro
+    entered = true;
+    hook.entered = true;
+    setTimeout(() => ui.showTitles(true), 900);
+  });
+  hook.ready = true;
 }
 
 main().catch((e) => {

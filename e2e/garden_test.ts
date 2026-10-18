@@ -67,6 +67,11 @@ Deno.test({
       const s0 = await page.evaluate(() => (globalThis as any).__bastonks.state());
       assert(s0.flyover, "flyover should be playing");
       assert(s0.trees >= 100, `trees ${s0.trees}`);
+      // the intro waits behind one large button on the loading screen
+      assert((await page.textContent("#enter"))?.includes("Salomé Klein"));
+      assertEquals(await page.evaluate(() => (globalThis as any).__bastonks.entered), false);
+      await page.click("#enter");
+      await page.waitForFunction(() => (globalThis as any).__bastonks.entered === true);
       await page.waitForSelector(".title-card.on", { timeout: 10_000 });
       const title = await page.textContent("#thesis-title");
       assert(title?.includes("Détection automatique des émotions"));

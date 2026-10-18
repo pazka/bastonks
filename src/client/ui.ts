@@ -55,9 +55,21 @@ export class UI {
     });
   }
 
-  loaded() {
-    $("loading").classList.add("done");
-    setTimeout(() => $("loading").remove(), 900);
+  /**
+   * The world is built: the loading screen offers one large button. Its click is the user gesture that lets
+   * sound start (`onEnter` runs inside it), then the screen drifts away like a feather.
+   */
+  offerEnter(onEnter: () => void) {
+    const b = $("enter") as HTMLButtonElement;
+    b.textContent = t().enter;
+    b.hidden = false;
+    $("loading").classList.add("ready");
+    b.focus({ preventScroll: true });
+    b.addEventListener("click", () => {
+      onEnter();
+      $("loading").classList.add("done");
+      setTimeout(() => $("loading").remove(), 2600);
+    }, { once: true });
   }
 
   loadingError() {

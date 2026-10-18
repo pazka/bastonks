@@ -19,6 +19,7 @@ try {
     const h = (globalThis as any).__bastonks;
     return h?.ready || h?.error;
   }, null, { timeout: 120_000 });
+  await page.click("#enter");
   await page.waitForSelector(".title-card.on", { timeout: 30_000 });
   for (const s of [3, 6, 9]) {
     await page.waitForTimeout(3_000);

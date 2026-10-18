@@ -29,7 +29,41 @@ button { font: inherit; color: inherit; cursor: pointer; }
 [hidden] { display: none !important; }
 
 .loading { position: fixed; inset: 0; display: grid; place-content: center; gap: 14px; justify-items: center; font-size: 1.05rem; color: var(--muted); background: radial-gradient(circle at 50% 40%, #fff7e6, #f3e6cf); transition: opacity .8s; z-index: 30; }
-.loading.done { opacity: 0; pointer-events: none; }
+.loading .leaf { grid-area: 1 / 1; }
+/* the loading line and the button share one place and cross-fade */
+.loading #loading-text, .loading .enter { grid-area: 2 / 1; align-self: center; justify-self: center; }
+.loading .enter { position: relative; z-index: 1; }
+#loading-text { transition: opacity .9s ease; }
+.loading.ready #loading-text { opacity: 0; pointer-events: none; }
+/* the one way in: large, warm, easy to read */
+.enter { font-family: var(--serif); font-size: clamp(1.25rem, 4.4vw, 1.9rem); line-height: 1.3; color: var(--ink); max-width: min(88vw, 560px); padding: .8em 1.7em; margin-top: 8px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .95); background: linear-gradient(180deg, #fffcf4, #f7e9cc); box-shadow: 0 12px 34px rgba(120, 88, 48, .18), 0 2px 6px rgba(120, 88, 48, .12), inset 0 1px 0 #fff; text-wrap: balance; animation: enter-in 2s cubic-bezier(.25, .1, .25, 1) .25s backwards; transition: transform .3s ease, box-shadow .3s ease; }
+.enter:hover { transform: translateY(-2px); box-shadow: 0 16px 40px rgba(120, 88, 48, .22), 0 3px 8px rgba(120, 88, 48, .14), inset 0 1px 0 #fff; }
+.enter:active { transform: translateY(1px) scale(.99); }
+.enter:focus-visible { outline: 2px solid rgba(97, 189, 79, .45); outline-offset: 5px; }
+@keyframes enter-in { from { opacity: 0; filter: blur(5px); transform: translateY(8px); } 60% { filter: blur(0); } }
+/* on click the screen lifts away like a fleeting feather: a soft gradient edge rises from the bottom while
+   the layer sways and drifts up; the leaf flutters off on its own */
+.loading.done { pointer-events: none; -webkit-mask-image: linear-gradient(172deg, #000 0%, #000 40%, transparent 60%, transparent 100%); mask-image: linear-gradient(172deg, #000 0%, #000 40%, transparent 60%, transparent 100%); -webkit-mask-size: 100% 250%; mask-size: 100% 250%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; animation: feather 2.6s cubic-bezier(.45, .1, .45, .95) forwards; }
+.loading.done .enter { animation: enter-out .6s ease forwards; }
+@keyframes enter-out { to { opacity: 0; transform: translateY(-6px); } }
+.loading.done .leaf { animation: leaf-away 2.2s cubic-bezier(.35, .1, .4, 1) forwards; }
+@keyframes feather {
+  0% { -webkit-mask-position: 0 0%; mask-position: 0 0%; transform: scale(1.04); }
+  30% { transform: scale(1.04) translate(-1.2vw, -1.5vh) rotate(-.8deg); }
+  65% { transform: scale(1.04) translate(1.2vw, -4vh) rotate(.8deg); }
+  100% { -webkit-mask-position: 0 100%; mask-position: 0 100%; transform: scale(1.04) translate(-.6vw, -8vh) rotate(-.4deg); }
+}
+@keyframes leaf-away {
+  0% { transform: none; opacity: 1; }
+  35% { transform: translate(-30px, -60px) rotate(-40deg); }
+  70% { transform: translate(25px, -140px) rotate(30deg); opacity: .8; }
+  100% { transform: translate(-10px, -230px) rotate(-20deg); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .enter { animation-duration: 1s; }
+  .loading.done { -webkit-mask-image: none; mask-image: none; animation: none; opacity: 0; }
+  .loading.done .leaf { animation: none; }
+}
 .leaf { width: 28px; height: 28px; border-radius: 0 60% 0 60%; background: var(--leaf); animation: sway 1.6s ease-in-out infinite; }
 @keyframes sway { 50% { transform: rotate(25deg) translateY(-4px); } }
 
