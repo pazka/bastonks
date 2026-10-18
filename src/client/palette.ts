@@ -47,8 +47,8 @@ export function cssHex(n: number): string {
 export const COLORS = {
   trunk: 0x8a5a3b,
   trunkDark: 0x6d452d,
-  grass: 0x8fcf6a,
-  grassDark: 0x6fb556,
+  grass: 0x9dd06a,
+  grassDark: 0x82bd58,
   path: 0xe9d6a5,
   skyTop: 0x7fc4ec,
   skyHorizon: 0xf3e6cf,

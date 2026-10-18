@@ -173,6 +173,128 @@ function blobTexture() {
   return t;
 }
 
+/** A warm, hand-painted-looking grass tile: short blade strokes, clover dapples and tiny flecks of colour. */
+function grassTexture(): THREE.CanvasTexture {
+  const S = 512;
+  const cv = document.createElement("canvas");
+  cv.width = cv.height = S;
+  const g = cv.getContext("2d")!;
+  const r = rng(1234);
+  g.fillStyle = "#f6f0dc";
+  g.fillRect(0, 0, S, S);
+  // soft dapples (light through leaves)
+  for (let i = 0; i < 40; i++) {
+    const x = r() * S, y = r() * S, rad = 20 + r() * 60;
+    const grd = g.createRadialGradient(x, y, 0, x, y, rad);
+    const warm = r() < 0.5;
+    grd.addColorStop(0, warm ? "rgba(255, 236, 170, 0.35)" : "rgba(170, 200, 120, 0.22)");
+    grd.addColorStop(1, "rgba(0, 0, 0, 0)");
+    g.fillStyle = grd;
+    for (const dx of [-S, 0, S]) {
+      for (const dy of [-S, 0, S]) g.fillRect(x - rad + dx, y - rad + dy, rad * 2, rad * 2);
+    }
+  }
+  // blades (wrapped so the tile repeats seamlessly)
+  const blades = [
+    "rgba(110, 150, 70, 0.45)",
+    "rgba(150, 180, 80, 0.4)",
+    "rgba(200, 200, 110, 0.35)",
+    "rgba(90, 130, 60, 0.35)",
+  ];
+  g.lineCap = "round";
+  for (let i = 0; i < 2600; i++) {
+    const x = r() * S, y = r() * S, len = 5 + r() * 9, a = -Math.PI / 2 + (r() - 0.5) * 0.9;
+    g.strokeStyle = blades[Math.floor(r() * blades.length)];
+    g.lineWidth = 1.2 + r() * 1.4;
+    for (const dx of [-S, 0, S]) {
+      for (const dy of [-S, 0, S]) {
+        g.beginPath();
+        g.moveTo(x + dx, y + dy);
+        g.lineTo(x + dx + Math.cos(a) * len, y + dy + Math.sin(a) * len);
+        g.stroke();
+      }
+    }
+  }
+  // clover and tiny warm flecks
+  for (let i = 0; i < 260; i++) {
+    const x = r() * S, y = r() * S;
+    const fleck = r();
+    g.fillStyle = fleck < 0.55
+      ? "rgba(105, 150, 75, 0.45)"
+      : fleck < 0.8
+      ? "rgba(255, 214, 102, 0.8)"
+      : fleck < 0.92
+      ? "rgba(255, 255, 245, 0.85)"
+      : "rgba(240, 150, 120, 0.75)";
+    const rad = fleck < 0.55 ? 2.5 + r() * 2.5 : 1.4 + r() * 1.4;
+    for (let k = 0; k < (fleck < 0.55 ? 3 : 1); k++) {
+      g.beginPath();
+      g.arc(
+        x + (k ? Math.cos(k * 2.1) * rad : 0),
+        y + (k ? Math.sin(k * 2.1) * rad : 0),
+        rad,
+        0,
+        Math.PI * 2,
+      );
+      g.fill();
+    }
+  }
+  const t = new THREE.CanvasTexture(cv);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = 8;
+  return t;
+}
+
+/** A little five-petal flower: white petals (tinted per instance), golden heart. */
+function flowerGeometry() {
+  const parts: THREE.BufferGeometry[] = [];
+  for (let k = 0; k < 5; k++) {
+    const a = (k / 5) * Math.PI * 2;
+    parts.push(
+      new THREE.SphereGeometry(0.055, 6, 4).scale(1.5, 0.35, 0.8).rotateY(-a).translate(
+        Math.cos(a) * 0.07,
+        0.16,
+        Math.sin(a) * 0.07,
+      ),
+    );
+  }
+  const heart = new THREE.SphereGeometry(0.04, 6, 4).scale(1, 0.6, 1).translate(0, 0.17, 0);
+  const stem = new THREE.CylinderGeometry(0.008, 0.01, 0.16, 4).translate(0, 0.08, 0);
+  const all = [...parts, heart, stem].map((p) => p.toNonIndexed());
+  const colors = [...parts.map(() => [1, 1, 1]), [1, 0.78, 0.25], [0.45, 0.65, 0.3]];
+  all.forEach((p, i) => {
+    const n = p.getAttribute("position").count;
+    const col = new Float32Array(n * 3);
+    for (let v = 0; v < n; v++) col.set(colors[i], v * 3);
+    p.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  });
+  const g = mergeGeometries(all);
+  g.computeVertexNormals();
+  return g;
+}
+
+/** A small round mushroom: cream stem, cap tinted per instance. */
+function mushroomGeometry() {
+  const stem = new THREE.CylinderGeometry(0.05, 0.065, 0.18, 6).translate(0, 0.09, 0).toNonIndexed();
+  const cap = new THREE.SphereGeometry(0.13, 8, 5, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.75, 1)
+    .translate(0, 0.17, 0)
+    .toNonIndexed();
+  const paint = (p: THREE.BufferGeometry, c: number[]) => {
+    const n = p.getAttribute("position").count;
+    const col = new Float32Array(n * 3);
+    for (let v = 0; v < n; v++) col.set(c, v * 3);
+    p.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  };
+  paint(stem, [1.0, 0.97, 0.9]);
+  paint(cap, [1, 1, 1]);
+  stem.deleteAttribute("uv");
+  cap.deleteAttribute("uv");
+  const g = mergeGeometries([stem, cap]);
+  g.computeVertexNormals();
+  return g;
+}
+
 // ---- build ----------------------------------------------------------------------------------------------
 
 export function buildForest(
@@ -206,7 +328,9 @@ export function buildForest(
   }
   rings.setAttribute("color", new THREE.BufferAttribute(gcol, 3));
   rings.computeVertexNormals();
-  const groundMesh = new THREE.Mesh(rings, toon(0xffffff, { vertexColors: true }));
+  const groundTex = grassTexture();
+  groundTex.repeat.set((R * 2) / 7, (R * 2) / 7);
+  const groundMesh = new THREE.Mesh(rings, toon(0xffffff, { vertexColors: true, map: groundTex }));
   groundMesh.name = "ground";
   group.add(groundMesh);
 
@@ -566,50 +690,72 @@ export function buildForest(
     addOutline(sprouts, 0.015);
   }
 
-  // Decor: grass tufts, flowers, rocks, bushes — kept off the Path, Trees and Greenhouse.
+  // Decor: grass tufts, flowers, clover patches, mushrooms, fallen leaves, rocks, bushes — off the Path,
+  // the trunks and the Greenhouse. Warm and dense near the forest, sparser far away.
   {
     const r = rng(42);
-    const n = Math.round(1400 * quality.decor);
+    const n = Math.round(3600 * quality.decor);
     const tuftGeo = mergeGeometries(
-      [0, 1, 2].map((k) =>
-        new THREE.ConeGeometry(0.06, 0.45, 3).translate(0, 0.22, 0).rotateZ((k - 1) * 0.35).rotateY(k * 2.1)
+      [0, 1, 2, 3].map((k) =>
+        new THREE.ConeGeometry(0.05, 0.42, 3).translate(0, 0.21, 0).rotateZ((k - 1.5) * 0.3).rotateY(k * 1.7)
           .toNonIndexed()
       ),
     );
     tuftGeo.computeVertexNormals();
-    const tufts = instanced(tuftGeo, toon(COLORS.grassDark), n, "tufts");
+    const tufts = instanced(tuftGeo, toon(0xffffff), n, "tufts");
     const flowers = instanced(
-      new THREE.IcosahedronGeometry(0.09, 0),
-      toon(0xffffff),
-      Math.round(n / 2),
+      flowerGeometry(),
+      toon(0xffffff, { vertexColors: true }),
+      Math.round(n / 2.2),
       "flowers",
+    );
+    const clover = instanced(
+      new THREE.CircleGeometry(0.5, 7).rotateX(-Math.PI / 2).translate(0, 0.03, 0),
+      toon(0xffffff),
+      Math.round(n / 5),
+      "clover",
     );
     const rocks = instanced(
       new THREE.DodecahedronGeometry(0.5, 0),
       toon(COLORS.rock),
-      Math.round(n / 14),
+      Math.round(n / 30),
       "rocks",
     );
     const bushes = instanced(
       new THREE.IcosahedronGeometry(0.8, 0),
       toon(0xffffff),
-      Math.round(n / 10),
+      Math.round(n / 22),
       "bushes",
     );
     const pathPts = layout.path;
     const g = layout.greenhouse;
     const clear = (x: number, z: number, margin: number) => {
-      if (Math.hypot(x - g.center.x, z - g.center.z) < Math.max(g.w, g.d) / 2 + 2) return false;
+      if (Math.hypot(x - g.center.x, z - g.center.z) < Math.max(g.w, g.d) / 2 + 1.5) return false;
       for (const t of layout.trees) {
-        if (Math.abs(t.pos.x - x) < t.crownR + margin && Math.abs(t.pos.z - z) < t.crownR + margin) {
+        if (Math.abs(t.pos.x - x) < t.trunkR + margin && Math.abs(t.pos.z - z) < t.trunkR + margin) {
           if (Math.hypot(t.pos.x - x, t.pos.z - z) < t.trunkR + margin) return false;
         }
       }
       for (let i = 0; i < pathPts.length; i += 2) {
         const p = pathPts[i];
-        if (Math.abs(p.x - x) < 2.4 && Math.abs(p.z - z) < 2.4) return false;
+        if (Math.abs(p.x - x) < 2.1 && Math.abs(p.z - z) < 2.1) return false;
       }
       return true;
+    };
+    const set = (
+      m: THREE.InstancedMesh,
+      k: number,
+      x: number,
+      z: number,
+      s: number,
+      flat = false,
+      lift = 0,
+    ) => {
+      tmp.position.set(x, groundHeight(x, z) + lift, z);
+      tmp.rotation.set(0, r() * 6.3, 0);
+      tmp.scale.set(s, flat ? 1 : s * (0.75 + r() * 0.5), s);
+      tmp.updateMatrix();
+      m.setMatrixAt(k, tmp.matrix);
     };
     const place = (
       m: THREE.InstancedMesh,
@@ -617,18 +763,15 @@ export function buildForest(
       scale: () => number,
       margin: number,
       color?: () => number,
+      flat = false,
     ) => {
       let k = 0;
       for (let tries = 0; k < count && tries < count * 6; tries++) {
-        const a = r() * Math.PI * 2, d = Math.sqrt(r()) * (layout.radius + 25);
+        // denser in the forest (inside the spiral), thinning out beyond it
+        const a = r() * Math.PI * 2, d = Math.pow(r(), 0.6) * (layout.radius + 30);
         const x = Math.cos(a) * d, z = Math.sin(a) * d;
         if (!clear(x, z, margin)) continue;
-        const s = scale();
-        tmp.position.set(x, groundHeight(x, z), z);
-        tmp.rotation.set(0, r() * 6.3, 0);
-        tmp.scale.set(s, s * (0.7 + r() * 0.5), s);
-        tmp.updateMatrix();
-        m.setMatrixAt(k, tmp.matrix);
+        set(m, k, x, z, scale(), flat);
         if (color) setColor(m, k, color(), c);
         k++;
       }
@@ -636,14 +779,69 @@ export function buildForest(
       m.instanceMatrix.needsUpdate = true;
       if (m.instanceColor) m.instanceColor.needsUpdate = true;
     };
-    place(tufts, n, () => 0.7 + r() * 0.8, 0.4);
-    place(flowers, Math.round(n / 2), () => 0.8 + r() * 0.6, 0.4, () => COLORS.flower[Math.floor(r() * 4)]);
-    place(rocks, Math.round(n / 14), () => 0.4 + r() * 1.2, 1.2);
-    place(bushes, Math.round(n / 10), () => 0.6 + r() * 0.9, 1.5, () => (r() < 0.5 ? 0x5fa856 : 0x79bd5f));
-    // flowers float a little above ground on a stalk-less look
-    group.add(tufts, flowers, rocks, bushes);
+    const tuftColors = [0x6fb556, 0x86c25a, 0x9cc95a, 0x7db04f, 0xa9c766];
+    const flowerColors = [0xffffff, 0xfff4d6, 0xffe08a, 0xffc9a8, 0xffc4d6, 0xd9c8ff];
+    place(tufts, n, () => 0.7 + r() * 0.9, 0.35, () => tuftColors[Math.floor(r() * tuftColors.length)]);
+    place(
+      flowers,
+      Math.round(n / 2.2),
+      () => 0.8 + r() * 0.7,
+      0.35,
+      () => flowerColors[Math.floor(r() * flowerColors.length)],
+    );
+    place(
+      clover,
+      Math.round(n / 5),
+      () => 0.6 + r() * 1.4,
+      0.4,
+      () => (r() < 0.6 ? 0x7fb956 : 0xa5c766),
+      true,
+    );
+    place(rocks, Math.round(n / 30), () => 0.4 + r() * 1.2, 1.2);
+    place(bushes, Math.round(n / 22), () => 0.6 + r() * 0.9, 1.5, () => (r() < 0.5 ? 0x5fa856 : 0x79bd5f));
+
+    // around each trunk: a few mushrooms and fallen leaves in the tree's season
+    const nt = layout.trees.length;
+    const mush = instanced(
+      mushroomGeometry(),
+      toon(0xffffff, { vertexColors: true }),
+      Math.round(nt * 1.5 * quality.decor) + 1,
+      "mushrooms",
+    );
+    const fallen = instanced(
+      new THREE.CircleGeometry(0.11, 5).scale(1.6, 1, 1).rotateX(-Math.PI / 2).translate(0, 0.04, 0),
+      toon(0xffffff),
+      Math.round(nt * 10 * quality.decor) + 1,
+      "fallen-leaves",
+    );
+    const capColors = [0xd9573b, 0xe8a04a, 0xf3e3c4, 0xc8784a];
+    let mi = 0, fi = 0;
+    for (const t of layout.trees) {
+      const palette = SEASON_LEAVES[t.tree.season];
+      const tr = rng(hashStr(t.tree.id) ^ 0xabc);
+      const nm = Math.floor(tr() * 3.2 * quality.decor);
+      for (let k = 0; k < nm && mi < mush.count; k++) {
+        const a = tr() * 6.3, d = t.trunkR + 0.4 + tr() * 1.6;
+        set(mush, mi, t.pos.x + Math.cos(a) * d, t.pos.z + Math.sin(a) * d, 0.7 + tr() * 0.8);
+        setColor(mush, mi++, capColors[Math.floor(tr() * capColors.length)], c);
+      }
+      const nf = Math.floor((t.tree.season === "autumn" ? 16 : 6) * quality.decor);
+      for (let k = 0; k < nf && fi < fallen.count; k++) {
+        const a = tr() * 6.3, d = t.trunkR + 0.3 + tr() * t.crownR * 1.2;
+        set(fallen, fi, t.pos.x + Math.cos(a) * d, t.pos.z + Math.sin(a) * d, 0.8 + tr() * 0.6, true);
+        setColor(fallen, fi++, palette[Math.floor(tr() * palette.length)], c);
+      }
+    }
+    mush.count = mi;
+    fallen.count = fi;
+    for (const m of [mush, fallen]) {
+      m.instanceMatrix.needsUpdate = true;
+      if (m.instanceColor) m.instanceColor.needsUpdate = true;
+    }
+    group.add(tufts, flowers, clover, rocks, bushes, mush, fallen);
     addOutline(rocks, 0.03);
     addOutline(bushes, 0.03);
+    addOutline(mush, 0.012);
   }
 
   // Golden Peanuts

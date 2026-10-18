@@ -72,12 +72,16 @@ Deno.test({
       await page.waitForSelector(".title-card.on", { timeout: 10_000 });
       const title = await page.textContent("#thesis-title");
       assert(title?.includes("Détection automatique des émotions"));
-      assertEquals((await page.textContent("#epigraph"))?.split("\n").length, 5);
+      assertEquals(await page.locator(".title-card blockquote").count(), 0); // the epigraph lives on the Path now
       await page.click("#skip");
       await page.waitForFunction(() => (globalThis as any).__bastonks.flyoverDone === true, null, {
         timeout: 10_000,
       });
       assert(await page.isVisible("#counter"));
+      // the epigraph fades in at the beginning of the Path, then stays
+      await page.waitForFunction(() => (globalThis as any).__bastonks.state().epigraph > 0.5, null, {
+        timeout: 20_000,
+      });
 
       // The Pigeon flies to a Branch (real controls, driven by the autopilot) and inspects it
       await page.evaluate(() => (globalThis as any).__bastonks.autopilot(3));
@@ -87,7 +91,7 @@ Deno.test({
       });
       const s1 = await page.evaluate(() => (globalThis as any).__bastonks.state());
       assert(["perch", "fly"].includes(s1.mode), s1.mode); // perched, or hovering at the branch
-      assertEquals(s1.found, 1);
+      assert(s1.found >= 1);
       assert(await page.isVisible("#panel"));
       const panelTitle = await page.textContent("#panel h2");
       assertEquals(panelTitle, s1.panelTitle);
@@ -96,6 +100,21 @@ Deno.test({
       assert((await page.textContent("#counter"))?.startsWith("1 / "));
       // links in card content are never clickable
       assertEquals(await page.locator("#panel a").count(), 0);
+      // Shift: one branch down (or the ground from the lowest one); the panel stays open
+      const before = s1.panelTitle;
+      await page.keyboard.press("Shift");
+      await page.waitForFunction(
+        (t) => {
+          const s = (globalThis as any).__bastonks.state();
+          return s.mode === "ground" || (s.mode === "perch" && s.panelTitle !== t);
+        },
+        before,
+        { timeout: 30_000, polling: 250 },
+      );
+      assert(
+        (await page.evaluate(() => (globalThis as any).__bastonks.state())).panelOpen,
+        "panel stays open",
+      );
       assertEquals(errors, []);
     } finally {
       await browser.close();

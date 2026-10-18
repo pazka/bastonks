@@ -142,8 +142,18 @@ export class SoundBoard {
     return !!this.ctx && !this.muted;
   }
 
+  private lastPlayed = new Map<string, number>();
+  /** Rate limit per effect: held buttons or fast state changes never machine-gun a sound. */
+  private gate(name: string, minGap: number): boolean {
+    if (!this.ready()) return false;
+    const now = this.ctx!.currentTime;
+    if (now - (this.lastPlayed.get(name) ?? -1e9) < minGap) return false;
+    this.lastPlayed.set(name, now);
+    return true;
+  }
+
   wing() {
-    if (!this.ready()) return;
+    if (!this.gate("wing", 0.3)) return;
     const ctx = this.ctx!, t = ctx.currentTime;
     const src = ctx.createBufferSource();
     src.buffer = this.noise;
@@ -161,9 +171,13 @@ export class SoundBoard {
   }
 
   coo() {
-    if (!this.ready()) return;
+    if (!this.gate("coo", 4)) return;
     const ctx = this.ctx!, t = ctx.currentTime;
-    const parts: [number, number, number][] = [[0, 0.22, 330], [0.26, 0.4, 300]];
+    // one or two notes, a little different each time
+    const k = 0.9 + Math.random() * 0.2;
+    const parts: [number, number, number][] = Math.random() < 0.35
+      ? [[0, 0.38, 310 * k]]
+      : [[0, 0.22, 330 * k], [0.26 + Math.random() * 0.08, 0.4, 300 * k]];
     for (const [start, dur, f] of parts) {
       const o = ctx.createOscillator();
       o.type = "sine";
@@ -207,13 +221,14 @@ export class SoundBoard {
   }
 
   inspect() {
+    if (!this.gate("inspect", 0.6)) return;
     this.bell([784, 1175], 0.07, 0.1);
   }
   pickup() {
     this.bell([523, 659, 784, 1047, 1319], 0.08, 0.15);
   }
   land() {
-    if (!this.ready()) return;
+    if (!this.gate("land", 0.4)) return;
     const ctx = this.ctx!, t = ctx.currentTime;
     const src = ctx.createBufferSource();
     src.buffer = this.noise;

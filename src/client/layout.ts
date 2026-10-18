@@ -76,7 +76,7 @@ export function groundHeight(x: number, z: number): number {
   return 0.55 * Math.sin(x * 0.031 + 1.3) * Math.cos(z * 0.027 - 0.4) + 0.3 * Math.sin((x + z) * 0.06);
 }
 
-export const SPIRAL = { r0: 16, ringGap: 30, step: 9.5, side: 6.5 };
+export const SPIRAL = { r0: 13, ringGap: 23, step: 6.8, side: 4.6 };
 
 /** Points of the spiral Path, `count` trees long. Returns [centre points, tangents] at every tree slot. */
 function spiral(count: number) {

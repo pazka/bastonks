@@ -5,10 +5,11 @@ import type { World } from "../shared/types.ts";
 import { SoundBoard } from "./audio.ts";
 import { buildForest, type WorldItem } from "./forest.ts";
 import { Glints, GlintState } from "./glints.ts";
-import { defaultLang, lang, setLang, t } from "./i18n.ts";
+import { defaultLang, EPIGRAPH, fmtDate, lang, setLang, t } from "./i18n.ts";
+import { PathWords } from "./groundText.ts";
 import { Input, type Intent } from "./input.ts";
 import { buildLayout, Grid, groundHeight, type Layout } from "./layout.ts";
-import { COLORS } from "./palette.ts";
+import { COLORS, SEASON_LEAVES } from "./palette.ts";
 import { codePigeon } from "./pigeon.ts";
 import { ChaseCamera, damp, Player } from "./player.ts";
 import { Progress } from "./progress.ts";
@@ -158,6 +159,9 @@ async function main() {
   arrow.visible = false;
   scene.add(arrow);
 
+  const words = new PathWords(layout, EPIGRAPH);
+  scene.add(words.group);
+
   const glints = new Glints(forest.items, pixelRatio * 2);
   scene.add(glints.points);
 
@@ -271,6 +275,7 @@ async function main() {
     ui.showTouch(input.touchMode || coarse);
     chase.snapBehind(player.pos, player.yaw);
     growStart = performance.now() / 1000;
+    words.revealEpigraph(growStart);
   };
   ui.onSkip = endFlyover;
   hook.skip = endFlyover;
@@ -304,18 +309,25 @@ async function main() {
       my: perchedElsewhere ? 0 : my,
       up: dy > 0.25 && player.vel.y < 2.5,
       upPressed: player.mode === "ground" || (perchedElsewhere && dy > 0),
-      down: dy < -0.8 || (perchedElsewhere && dy <= 0),
-      inspect: there && (player.mode === "perch" || h < 0.8),
+      down: dy < -0.8,
+      downPressed: perchedElsewhere && dy <= 0,
+      inspect: there && h < 0.8,
     };
   };
 
   // ---- inspect / found / peanuts --------------------------------------------------------------------
   let target: (WorldItem & { idx: number }) | null = null;
   let gesture = 0;
+  /** The panel takes a hint of its tree's season (or of the Greenhouse). */
+  const panelTint = (w: WorldItem) =>
+    w.tree >= 0 ? SEASON_LEAVES[layout.trees[w.tree].tree.season][0] : COLORS.sprout;
   const inspect = (w: WorldItem & { idx: number }) => {
+    if (ui.current === w) return;
     const wasNew = newIds.has(w.item.id);
-    ui.openPanel(w, wasNew);
-    audio.inspect();
+    // the chime only when the panel opens; hopping from branch to branch just turns its page
+    const opening = ui.current === null;
+    ui.openPanel(w, wasNew, panelTint(w));
+    if (opening) audio.inspect();
     gesture = 1;
     if (!progress.found.has(w.item.id)) {
       progress.found.add(w.item.id);
@@ -371,7 +383,8 @@ async function main() {
   let growStart = Infinity;
   let fpsNow = 30;
   const tmpV = new THREE.Vector3();
-  let cooTimer = 6 + Math.random() * 10;
+  let cooTimer = 20 + Math.random() * 30;
+  let lastPerched: WorldItem | null = null;
   const motion = reducedMotion ? 0.3 : 1;
 
   hook.state = () => ({
@@ -388,6 +401,7 @@ async function main() {
     drawCalls: renderer.info.render.calls,
     autopilot: autopilot !== null,
     fps: Math.round(fpsNow),
+    epigraph: words.epigraphOpacity,
     dbg: autopilot ? { perch: (autopilot as WorldItem).perch, tip: (autopilot as WorldItem).p } : null,
   });
 
@@ -452,6 +466,13 @@ async function main() {
     }
     ui.setPrompt(!!target && ui.current !== target, input.touchMode);
     if (target && it.inspect) inspect(target);
+    // perched on a Branch: its card opens by itself (and follows the pigeon from branch to branch)
+    if (player.mode === "perch" && player.perch) {
+      if (player.perch.item !== lastPerched) {
+        lastPerched = player.perch.item;
+        inspect(player.perch.item as WorldItem & { idx: number });
+      }
+    } else if (!player.hopping) lastPerched = null;
 
     // peanuts
     let nearestPeanut: THREE.Vector3 | null = null, pd = Infinity;
@@ -485,7 +506,7 @@ async function main() {
     // coo now and then when idle on the ground or a perch
     cooTimer -= dt;
     if (cooTimer < 0) {
-      cooTimer = 10 + Math.random() * 18;
+      cooTimer = 25 + Math.random() * 55;
       if (!inFlyover && player.speed < 0.2 && player.mode !== "fly") {
         audio.coo();
         gesture = 0.6;
@@ -497,6 +518,8 @@ async function main() {
       forest.grow(newItems, (now - growStart) / (reducedMotion ? 0.6 : 2.5));
     }
     forest.update(time, dt);
+    if (!inFlyover) words.update(now, player.pos, (week) => `${t().week} ${fmtDate(week)}`);
+    else words.update(now, new THREE.Vector3(1e6, 0, 0), () => "");
     glints.update(
       time,
       player.pos,

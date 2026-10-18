@@ -6,8 +6,9 @@ export interface Intent {
   my: number;
   up: boolean;
   down: boolean;
-  /** Edge-triggered (true for one frame). */
+  /** Edge-triggered (true for one frame): holding a key or a button never repeats. */
   upPressed: boolean;
+  downPressed: boolean;
   inspect: boolean;
   /** Camera orbit deltas (radians) accumulated since last frame. */
   yaw: number;
@@ -26,6 +27,7 @@ export class Input {
   private touchUp = false;
   private touchDown = false;
   private touchUpPressed = false;
+  private touchDownPressed = false;
   private touchInspect = false;
   private dragging = false;
   enabled = true;
@@ -55,8 +57,9 @@ export class Input {
     canvas.addEventListener("pointermove", (e) => {
       if (e.pointerType === "touch") return this.touchMove(e);
       if (!this.dragging) return;
-      this.yaw -= e.movementX * 0.005;
-      this.pitch -= e.movementY * 0.004;
+      // the scene follows the mouse (drag right → look right, drag up → look up)
+      this.yaw += e.movementX * 0.005;
+      this.pitch += e.movementY * 0.004;
     });
     const end = (e: PointerEvent) => {
       if (e.pointerType === "touch") return this.touchEnd(e);
@@ -122,7 +125,10 @@ export class Input {
     if (which === "up") {
       if (on && !this.touchUp) this.touchUpPressed = true;
       this.touchUp = on;
-    } else this.touchDown = on;
+    } else {
+      if (on && !this.touchDown) this.touchDownPressed = true;
+      this.touchDown = on;
+    }
   }
   tapInspect() {
     this.touchInspect = true;
@@ -148,6 +154,7 @@ export class Input {
       up: this.enabled && (has(" ") || this.touchUp),
       down: this.enabled && (has("shift", "c") || this.touchDown),
       upPressed: this.enabled && (pr(" ") || this.touchUpPressed),
+      downPressed: this.enabled && (pr("shift", "c") || this.touchDownPressed),
       inspect: this.enabled && (pr("e", "enter") || this.touchInspect),
       yaw: this.yaw,
       pitch: this.pitch,
@@ -155,6 +162,7 @@ export class Input {
     };
     this.pressed.clear();
     this.touchUpPressed = false;
+    this.touchDownPressed = false;
     this.touchInspect = false;
     this.yaw = this.pitch = this.zoom = 0;
     return out;

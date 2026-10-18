@@ -55,16 +55,16 @@ const STRINGS = {
     },
     controlsDesktop: [
       ["ZQSD / WASD / flèches", "marcher, voler"],
-      ["Espace", "s'envoler, battre des ailes, sauter de branche en branche"],
-      ["Maj", "descendre, se poser"],
-      ["E / Entrée", "inspecter"],
+      ["Espace", "s'envoler, battre des ailes ; perché : branche du dessus (tout en haut : s'envoler)"],
+      ["Maj", "descendre ; perché : branche du dessous (tout en bas : au sol)"],
+      ["E / Entrée", "inspecter (se poser sur une branche l'ouvre aussi)"],
       ["Souris (glisser)", "tourner la caméra"],
       ["Échap", "fermer le panneau"],
     ],
     controlsTouch: [
       ["Joystick", "marcher, voler"],
-      ["▲", "s'envoler, sauter de branche en branche"],
-      ["▼", "descendre, se poser"],
+      ["▲", "s'envoler ; perché : branche du dessus"],
+      ["▼", "descendre ; perché : branche du dessous, puis le sol"],
       ["Glisser", "tourner la caméra"],
     ],
     aboutBody: [
@@ -121,16 +121,16 @@ const STRINGS = {
     },
     controlsDesktop: [
       ["WASD / ZQSD / arrows", "walk, fly"],
-      ["Space", "take off, flap, hop from branch to branch"],
-      ["Shift", "descend, land"],
-      ["E / Enter", "inspect"],
+      ["Space", "take off, flap; perched: the branch above (from the top: take off)"],
+      ["Shift", "descend; perched: the branch below (from the lowest: the ground)"],
+      ["E / Enter", "inspect (landing on a branch opens it too)"],
       ["Mouse (drag)", "turn the camera"],
       ["Esc", "close the panel"],
     ],
     controlsTouch: [
       ["Joystick", "walk, fly"],
-      ["▲", "take off, hop from branch to branch"],
-      ["▼", "descend, land"],
+      ["▲", "take off; perched: the branch above"],
+      ["▼", "descend; perched: the branch below, then the ground"],
       ["Drag", "turn the camera"],
     ],
     aboutBody: [

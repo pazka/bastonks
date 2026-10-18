@@ -3,7 +3,7 @@
 
 import type { Species } from "../shared/types.ts";
 import type { WorldItem } from "./forest.ts";
-import { AUTHOR, EPIGRAPH, fmtDate, fmtInt, lang, t, THESIS_TITLE, THESIS_TITLE_EN } from "./i18n.ts";
+import { AUTHOR, fmtDate, fmtInt, lang, t, THESIS_TITLE, THESIS_TITLE_EN } from "./i18n.ts";
 import { cssHex, trelloColor } from "./palette.ts";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -74,7 +74,6 @@ export class UI {
     $("flyover").hidden = false;
     $("thesis-title").textContent = THESIS_TITLE;
     $("author").textContent = AUTHOR;
-    $("epigraph").textContent = EPIGRAPH.join("\n");
     $("skip").textContent = t().skip;
     document.querySelector(".title-card")!.classList.toggle("on", show);
   }
@@ -152,9 +151,10 @@ export class UI {
 
   // ---- panel --------------------------------------------------------------------------------------------
 
-  openPanel(w: WorldItem, isNew: boolean) {
+  openPanel(w: WorldItem, isNew: boolean, tint: number) {
     this.current = w;
     this.renderPanel(w, isNew);
+    $("panel").style.setProperty("--tint", cssHex(tint));
     $("panel").hidden = false;
     document.body.classList.add("panel-open");
     $("panel-body").scrollTop = 0;
