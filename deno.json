@@ -28,7 +28,8 @@
     "include": [
       "src/",
       "tests/",
-      "scripts/"
+      "scripts/",
+      "e2e/"
     ],
     "exclude": [
       "src/server/assets.gen.ts"
@@ -48,10 +49,10 @@
     "bundle": "mkdir -p dist/web && deno bundle --platform=browser --minify --output=dist/web/app.js src/client/main.ts",
     "embed": "deno run --allow-read=dist,web --allow-write=dist/web/index.html,src/server/assets.gen.ts scripts/embed.ts",
     "build": "deno task bundle && deno task embed",
-    "check": "deno fmt --check && deno lint && deno check src/ tests/ scripts/",
+    "check": "deno fmt --check && deno lint && deno check src/ tests/ scripts/ e2e/",
     "test": "deno test --allow-read --allow-write=/tmp --allow-env=TMPDIR,TMP,TEMP tests/",
     "dev": "deno run --allow-net=127.0.0.1 --allow-read --allow-write=./data --allow-env=APP_PORT,APP_DATA_DIR,BASTONKS_DEV_TRELLO scripts/dev.ts",
-    "compile": "deno compile --no-prompt --allow-net=api.trello.com,trello.com,trello-attachments.s3.amazonaws.com,0.0.0.0:8000,127.0.0.1:8000 --allow-read=/data --allow-write=/data --allow-env=TRELLO_KEY,TRELLO_TOKEN,TRELLO_BOARD_ID,APP_DATA_DIR,APP_PORT,APP_FETCH_TIMEOUT_MS,APP_MIN_REFETCH_S,APP_LOG_LEVEL,APP_BASE_URL,APP_TRUSTED_PROXIES --output=dist/bastonks src/server/main.ts",
+    "compile": "deno compile --no-prompt --exclude-unused-npm --allow-net=api.trello.com,trello.com,trello-attachments.s3.amazonaws.com,0.0.0.0:8000,127.0.0.1:8000 --allow-read=/data --allow-write=/data --allow-env=TRELLO_KEY,TRELLO_TOKEN,TRELLO_BOARD_ID,APP_DATA_DIR,APP_PORT,APP_FETCH_TIMEOUT_MS,APP_MIN_REFETCH_S,APP_LOG_LEVEL,APP_BASE_URL,APP_TRUSTED_PROXIES --output=dist/bastonks src/server/main.ts",
     "e2e": "deno test --allow-all e2e/"
   }
 }

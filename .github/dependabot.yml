@@ -1,0 +1,12 @@
+# Dependency updates with a cooldown (box contract rule 12): nothing younger than 7 days is proposed.
+# deno.json (three, @types/three, playwright-core, @std/*) is reviewed by hand: `deno outdated`.
+version: 2
+updates:
+  - package-ecosystem: docker
+    directory: /
+    schedule: { interval: weekly }
+    cooldown: { default-days: 7 }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+    cooldown: { default-days: 7 }

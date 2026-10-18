@@ -21,12 +21,23 @@ env:
   TRIVY_IMAGE: mirror.gcr.io/aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa
 
 jobs:
-  test:   # adapt to the stack (pytest / npm test / go test …); keep it blocking
+  test:   # fmt, lint, typecheck, unit tests, then the browser e2e (BRIEF §10) on the synthetic board
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - run: |
-          echo "TODO (builder): run the test suite" && false
+      - name: Install Deno 2.9.7 (pinned, checksum-verified)
+        run: |
+          set -euo pipefail
+          url=https://github.com/denoland/deno/releases/download/v2.9.7/deno-x86_64-unknown-linux-gnu.zip
+          curl -fsSL -o /tmp/deno.zip "$url"
+          echo "c6527f24f4b16031d3ae4fa9f658d5f11534c8d84ce7dc8502420280919c3490  /tmp/deno.zip" | sha256sum -c -
+          sudo unzip -o -q /tmp/deno.zip -d /usr/local/bin && deno --version
+      - run: deno ci            # frozen lockfile, minimum dependency age, no install scripts
+      - run: deno task build    # front-end bundle embedded into the server
+      - run: deno task check
+      - run: deno task test
+      - name: e2e (headless Chrome, software GL)
+        run: CHROME_PATH="$(command -v google-chrome || command -v chromium)" deno task e2e
 
   image:
     needs: test
@@ -36,6 +47,13 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v5
+      - name: Install Deno 2.9.7 (pinned, checksum-verified)
+        run: |
+          set -euo pipefail
+          url=https://github.com/denoland/deno/releases/download/v2.9.7/deno-x86_64-unknown-linux-gnu.zip
+          curl -fsSL -o /tmp/deno.zip "$url"
+          echo "c6527f24f4b16031d3ae4fa9f658d5f11534c8d84ce7dc8502420280919c3490  /tmp/deno.zip" | sha256sum -c -
+          sudo unzip -o -q /tmp/deno.zip -d /usr/local/bin && deno --version
       - uses: docker/setup-buildx-action@v3
 
       - name: Build (local, for scanning)
@@ -54,12 +72,21 @@ jobs:
             --db-repository mirror.gcr.io/aquasec/trivy-db,ghcr.io/aquasecurity/trivy-db \
             bastonks:scan
 
-      - name: Container smoke (same hardening as the box)
+      - name: Container smoke (same hardening as the box) + capability checks
         run: |
-          docker run -d --name smoke --read-only --tmpfs /tmp --cap-drop ALL --user 10001:10001 \
-            --security-opt no-new-privileges:true -v smoke-data:/data -p 127.0.0.1:8000:8000 bastonks:scan
+          set -euo pipefail
+          # A cleaned synthetic snapshot in the volume and NO Trello credentials: the app must serve it, stale.
+          deno run --allow-read --allow-write=/tmp/seed scripts/seed.ts /tmp/seed
+          sudo chown -R 10001:10001 /tmp/seed
+          docker create --name smoke --read-only --tmpfs /tmp --cap-drop ALL --user 10001:10001 \
+            --security-opt no-new-privileges:true --pids-limit 128 --memory 512m \
+            -v smoke-data:/data -p 127.0.0.1:8000:8000 bastonks:scan
+          sudo docker cp -a /tmp/seed/. smoke:/data/
+          docker start smoke
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8000/healthz && break; sleep 2; done
           curl -fsS http://127.0.0.1:8000/healthz | python3 -c 'import json,sys; assert json.load(sys.stdin)["status"]=="ok"'
+          docker exec smoke /app/bastonks healthcheck
+          docker exec smoke /app/bastonks smoke http://127.0.0.1:8000 --expect-stale
           docker logs smoke | tail -n 20
           docker rm -f smoke
 
