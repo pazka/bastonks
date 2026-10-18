@@ -1,0 +1,35 @@
+# Manual: screenshots of the live site (owner's hub card). Runs only here, never on the box (Decision #17).
+name: screenshot
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Page to capture"
+        default: "https://bastonks.hosh.it"
+
+permissions:
+  contents: read
+
+jobs:
+  shoot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install Deno 2.9.7 (pinned, checksum-verified)
+        run: |
+          set -euo pipefail
+          url=https://github.com/denoland/deno/releases/download/v2.9.7/deno-x86_64-unknown-linux-gnu.zip
+          curl -fsSL -o /tmp/deno.zip "$url"
+          echo "c6527f24f4b16031d3ae4fa9f658d5f11534c8d84ce7dc8502420280919c3490  /tmp/deno.zip" | sha256sum -c -
+          sudo unzip -o -q /tmp/deno.zip -d /usr/local/bin && deno --version
+      - run: deno ci
+      - name: capture (headless Chrome, software GL)
+        env:
+          URL: ${{ inputs.url }}
+        run: CHROME_PATH="$(command -v google-chrome || command -v chromium)" deno run -A tools/screenshot.ts "$URL" shots
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: shots/
+          retention-days: 7
