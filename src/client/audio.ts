@@ -425,7 +425,7 @@ export class SoundBoard {
   }
 
   wing() {
-    if (!this.gate("wing", 0.7)) return; // in step with the slower wing beat
+    if (!this.gate("wing", 0.3)) return;
     const ctx = this.ctx!, t = ctx.currentTime;
     const src = ctx.createBufferSource();
     src.buffer = this.noise;
