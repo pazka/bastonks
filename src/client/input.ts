@@ -101,8 +101,8 @@ export class Input {
       const [dx, dy] = this.stickVec();
       this.knob.style.transform = `translate(${dx * 40}px, ${dy * 40}px)`;
     } else if (e.pointerId === this.look.id) {
-      // touch: the camera moves the other way round from the mouse, which feels natural under a finger
-      this.yaw += (e.clientX - this.look.x) * 0.008;
+      // touch: horizontal drag turns the view with the finger; vertical drag is inverted from the mouse
+      this.yaw -= (e.clientX - this.look.x) * 0.008;
       this.pitch += (e.clientY - this.look.y) * 0.006;
       this.look.x = e.clientX;
       this.look.y = e.clientY;
