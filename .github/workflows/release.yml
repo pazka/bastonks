@@ -68,7 +68,7 @@ jobs:
           echo "minor=$(echo "${tag#v}" | cut -d. -f1,2)" >> "$GITHUB_OUTPUT"
 
       - name: Build (local, for scanning)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           load: true
@@ -113,7 +113,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Push :vX.Y.Z, :X.Y, :latest
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           push: true
