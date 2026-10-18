@@ -22,13 +22,13 @@ check fails (the workflow then goes red). Nothing from the repo runs on the host
 
 Box rules: `ACTIONS-LOG.md` intent BEFORE, result + revert AFTER; `/home/pazka/MIGRATION/scripts/smoke.sh`
 BEFORE and AFTER. Prerequisites done by `scripts/new-project.sh` + the on-box session: DNS record,
-port registered in `11-BOX-STANDARD.md`, a `v0.1.0` release built.
+port registered in `11-BOX-STANDARD.md`, a `v1.0.0` release built.
 
 ```sh
 # A — release checkout (provides docker-compose.example.yml, .env.example, deploy/*)
 sudo mkdir -p /srv/bastonks && sudo chmod 750 /srv/bastonks && cd /srv/bastonks
 [ -d .git ] || { sudo git init -q && sudo git remote add origin https://github.com/pazka/bastonks; }
-sudo git fetch -q --depth 1 origin tag v0.1.0 && sudo git checkout -q v0.1.0
+sudo git fetch -q --depth 1 origin tag v1.0.0 && sudo git checkout -q v1.0.0
 # B — env file from the template (no secret in it yet); never read it after step C
 [ -e bastonks.env ] || sudo install -m 600 .env.example bastonks.env
 ```
@@ -40,7 +40,7 @@ It asks for the Trello **API key**, a **read-only token** (`scope=read`, expirat
 ```sh
 # D — pin the box config (validates the compose hardening), first deploy (writes the Traefik route)
 sudo hosh-deploy register bastonks
-sudo hosh-deploy deploy bastonks v0.1.0
+sudo hosh-deploy deploy bastonks v1.0.0
 # E — GitHub key for auto-deploys (claude_agent: keygen; root: bind; gh: secret; private key shredded)
 ssh-keygen -q -t ed25519 -N '' -C hosh-deploy:bastonks -f /tmp/bastonks-deploy
 sudo /home/pazka/MIGRATION/scripts/setup-hosh-deploy.sh key bastonks /tmp/bastonks-deploy.pub
@@ -57,7 +57,7 @@ and test the GitHub path once: Actions → deploy → `status`.
 ## 2. Variables (`bastonks.env`, mode 600)
 | Variable | Default | Set by | Meaning |
 |---|---|---|---|
-| `APP_IMAGE` | `ghcr.io/pazka/bastonks:v0.1.0` | hosh-deploy | Release tag running (the only line hosh-deploy rewrites). |
+| `APP_IMAGE` | `ghcr.io/pazka/bastonks:v1.0.0` | hosh-deploy | Release tag running (the only line hosh-deploy rewrites). |
 | `APP_BIND` | `127.0.0.1:9130` | template | Loopback port published for Traefik. |
 | `TRELLO_KEY` | empty (**required**) | owner, `scripts/set-trello.sh` | Trello API key. |
 | `TRELLO_TOKEN` | empty (**required**) | owner, `scripts/set-trello.sh` | Trello token, **read-only** scope. |
