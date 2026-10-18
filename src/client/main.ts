@@ -426,6 +426,7 @@ async function main() {
     const it = inFlyover ? raw : pilot(raw);
     if (!inFlyover) {
       player.update(dt, it, chase.yaw);
+      chase.perched = player.mode === "perch" || player.hopping;
       chase.update(dt, player.pos, player.yaw, player.speed > 0.4, player.mode === "fly", it);
     }
 

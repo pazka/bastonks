@@ -87,8 +87,8 @@ export class PathWords {
     const { tex } = canvasTexture(1024, 720, (g) => {
       // a soft paper-coloured halo keeps the words legible over the scenery
       const halo = g.createRadialGradient(512, 360, 60, 512, 360, 520);
-      halo.addColorStop(0, "rgba(255, 248, 232, 0.78)");
-      halo.addColorStop(0.7, "rgba(255, 248, 232, 0.45)");
+      halo.addColorStop(0, "rgba(255, 248, 232, 0.6)");
+      halo.addColorStop(0.7, "rgba(255, 248, 232, 0.3)");
       halo.addColorStop(1, "rgba(255, 248, 232, 0)");
       g.fillStyle = halo;
       g.fillRect(0, 0, 1024, 720);
@@ -113,8 +113,8 @@ export class PathWords {
       }),
     );
     this.epigraph.renderOrder = 3;
-    const ex = s.x + dir.x * 6.5, ez = s.z + dir.z * 6.5;
-    this.epigraphBase = groundHeight(ex, ez) + 1.75;
+    const ex = s.x + dir.x * 7.5, ez = s.z + dir.z * 7.5;
+    this.epigraphBase = groundHeight(ex, ez) + 1.3;
     this.epigraph.position.set(ex, this.epigraphBase, ez);
     this.epigraph.rotation.y = Math.atan2(-dir.x, -dir.z); // faces the pigeon's starting point
     this.group.add(this.epigraph);

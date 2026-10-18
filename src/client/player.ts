@@ -322,6 +322,9 @@ export class ChaseCamera {
     this.place(target, 1);
   }
 
+  /** Perched among the leaves, the camera comes closer so foliage does not fill the view. */
+  perched = false;
+
   update(dt: number, target: THREE.Vector3, pigeonYaw: number, moving: boolean, flying: boolean, it: Intent) {
     if (it.yaw || it.pitch) this.idle = 0;
     else this.idle += dt;
@@ -334,12 +337,15 @@ export class ChaseCamera {
       while (d < -Math.PI) d += Math.PI * 2;
       this.yaw += d * Math.min(1, dt * (flying ? 1.6 : 1.0));
     }
+    const d = this.perched ? Math.min(this.dist, 2.6) : this.dist;
+    this.effDist += (d - this.effDist) * Math.min(1, dt * 3);
     this.place(target, Math.min(1, dt * 8));
   }
 
+  private effDist = 4.2;
   private place(target: THREE.Vector3, k: number) {
     this.look.lerp(target, k);
-    const d = this.dist;
+    const d = this.effDist;
     const cx = this.look.x - Math.sin(this.yaw) * Math.cos(this.pitch) * d;
     const cz = this.look.z - Math.cos(this.yaw) * Math.cos(this.pitch) * d;
     let cy = this.look.y + 0.4 + Math.sin(this.pitch) * d;
