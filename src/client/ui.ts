@@ -166,12 +166,22 @@ export class UI {
     $("stale").textContent = t().stale;
   }
 
-  /** The E hint (or the touch button): fades in near a tree, fades out away from it. */
-  setPrompt(visible: boolean, touch: boolean) {
+  /**
+   * The hint at the bottom: near a tree, "E : inspect tree" (a button on touch screens); perched on a
+   * Branch, how to go to the branch above or below instead. Fades in and out.
+   */
+  setPrompt(visible: boolean, touch: boolean, perch: { rank: number; count: number } | null = null) {
+    const s = t();
     const p = $("prompt");
-    if (p.textContent !== t().inspectKey) p.textContent = t().inspectKey;
-    p.classList.toggle("show", visible && !touch);
-    $("t-inspect").classList.toggle("show", visible && touch);
+    let text = "";
+    if (perch) {
+      const up = perch.rank < perch.count - 1 ? s.branchUp : s.takeOff;
+      const down = perch.rank > 0 ? s.branchDown : s.toGround;
+      text = touch ? `▲ ${up}  ·  ▼ ${down}` : `${s.keyUp} : ${up}  ·  ${s.keyDown} : ${down}`;
+    } else if (visible && !touch) text = s.inspectKey;
+    if (text && p.textContent !== text) p.textContent = text;
+    p.classList.toggle("show", !!text);
+    $("t-inspect").classList.toggle("show", visible && touch && !perch);
   }
 
   toast(text: string, ms = 3200) {

@@ -477,19 +477,19 @@ async function main() {
       target = bestItem;
       glints.setTarget(bestItem ? bestItem.idx : -1);
     }
-    ui.setPrompt(!!best, input.touchMode);
+    const perchHint = player.mode === "perch" && player.perch
+      ? {
+        rank: player.perch.ladder.length ? player.perch.rank : 0,
+        count: Math.max(1, player.perch.ladder.length),
+      }
+      : null;
+    ui.setPrompt(!!best && !perchHint, input.touchMode, perchHint);
     if (best && it.inspect) player.swoopTo(best);
     // perched on a Branch: its card opens by itself (and follows the pigeon from branch to branch)
     if (player.mode === "perch" && player.perch) {
       if (player.perch.item !== lastPerched) {
         lastPerched = player.perch.item;
         inspect(player.perch.item as WorldItem & { idx: number });
-        // frame the branch from the side, from outside the crown (its own leaf cluster stays out of the way)
-        const tr = layout.trees[player.perch.item.tree];
-        if (tr) {
-          const out = Math.atan2(player.perch.p.x - tr.pos.x, player.perch.p.z - tr.pos.z);
-          chase.perchYaw = out + Math.PI - 0.6;
-        } else chase.perchYaw = null;
       }
     } else if (!player.hopping) {
       lastPerched = null;

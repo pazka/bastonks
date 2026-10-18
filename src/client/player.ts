@@ -345,8 +345,6 @@ export class ChaseCamera {
 
   /** Perched among the leaves, the camera comes closer so foliage does not fill the view. */
   perched = false;
-  /** When perched: the yaw that shows the branch from the side, outside the crown (null = follow the pigeon). */
-  perchYaw: number | null = null;
   private wasPerched = false;
 
   update(dt: number, target: THREE.Vector3, pigeonYaw: number, moving: boolean, flying: boolean, it: Intent) {
@@ -358,20 +356,16 @@ export class ChaseCamera {
     if (this.perched && !this.wasPerched) this.dist = Math.min(this.dist, 2.8);
     this.wasPerched = this.perched;
     this.dist = Math.max(1.6, Math.min(18, this.dist * (1 + it.zoom)));
-    if (this.perched && this.perchYaw !== null && this.idle > 1.2) {
-      let d = this.perchYaw - this.yaw;
-      while (d > Math.PI) d -= Math.PI * 2;
-      while (d < -Math.PI) d += Math.PI * 2;
-      this.yaw += d * Math.min(1, dt * 2.2);
-      this.pitch += (0.62 - this.pitch) * Math.min(1, dt * 1.5);
-    } else if (moving && this.idle > 1.2) {
+    // In a tree (perched, or hopping between branches) the camera never turns by itself: it only glides
+    // after the pigeon at its height. Following its heading resumes once the pigeon leaves the tree.
+    if (!this.perched && moving && this.idle > 1.2) {
       let d = pigeonYaw - this.yaw;
       while (d > Math.PI) d -= Math.PI * 2;
       while (d < -Math.PI) d += Math.PI * 2;
       this.yaw += d * Math.min(1, dt * (flying ? 1.6 : 1.0));
     }
     this.effDist += (this.dist - this.effDist) * Math.min(1, dt * 6);
-    this.place(target, Math.min(1, dt * 8));
+    this.place(target, Math.min(1, dt * (this.perched ? 3 : 8))); // a softer glide in the tree
   }
 
   private effDist = 4.2;
