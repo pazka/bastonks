@@ -55,7 +55,7 @@ jobs:
           curl -fsSL -o /tmp/deno.zip "$url"
           echo "c6527f24f4b16031d3ae4fa9f658d5f11534c8d84ce7dc8502420280919c3490  /tmp/deno.zip" | sha256sum -c -
           sudo unzip -o -q /tmp/deno.zip -d /usr/local/bin && deno --version
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       - name: Version from tag
         id: v
