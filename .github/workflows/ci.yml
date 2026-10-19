@@ -2,9 +2,10 @@ name: ci
 
 # push to main / PR → tests → build → Trivy CRITICAL gate → hardened container smoke → (main only)
 # push ghcr.io/pazka/bastonks:ci and :<sha>. Box standard (hosh-migration 11-BOX-STANDARD.md).
+# agent/** branches get the same checks without a PR (nothing is pushed to ghcr for them).
 on:
   push:
-    branches: [main]
+    branches: [main, 'agent/**']
   pull_request:
   workflow_dispatch:
 
@@ -89,6 +90,22 @@ jobs:
           docker exec smoke /app/bastonks smoke http://127.0.0.1:8000 --expect-stale
           docker logs smoke | tail -n 20
           docker rm -f smoke
+
+      - name: Hardening comes from the image; /data is writable under it
+        run: |
+          set -euo pipefail
+          # The image itself runs as 10001 (no --user here: a Dockerfile regression must show).
+          test "$(docker image inspect --format '{{.Config.User}}' bastonks:scan)" = "10001:10001"
+          # Empty volume + read-only rootfs: the app must create its own state under /data and stay up.
+          docker run -d --name fresh --read-only --tmpfs /tmp --cap-drop ALL \
+            --security-opt no-new-privileges:true --pids-limit 128 --memory 512m \
+            -v fresh-data:/data bastonks:scan
+          sleep 6
+          test "$(docker inspect --format '{{.State.Running}}' fresh)" = true
+          docker cp fresh:/data - | tar -t > /tmp/fresh.lst
+          grep -qx 'data/.secrets/id-salt' /tmp/fresh.lst
+          grep -qx 'data/img/' /tmp/fresh.lst
+          docker rm -f fresh
 
       - name: Log in to GHCR
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
