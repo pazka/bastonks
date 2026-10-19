@@ -3,7 +3,7 @@
 export type Lang = "fr" | "en";
 
 export const THESIS_TITLE =
-  "Détection automatique des émotions dans le discours de patients atteints de cérébrolésions acquises";
+  "Détection automatique des expressions émotionnelles dans le discours de patients atteints d’une lésion cérébrale acquise";
 export const AUTHOR = "Salomé Klein";
 /** Verbatim, same in FR and EN (BRIEF §4). */
 export const EPIGRAPH = [
@@ -34,6 +34,7 @@ const STRINGS = {
     lang: "English",
     loading: "Le jardin pousse…",
     enter: `Explorer le travail de ${AUTHOR}`,
+    byline: `Thèse présentée par ${AUTHOR}, soutenue le 28 septembre 2026`,
     error: "Le jardin n'a pas pu être chargé. Réessayez dans un instant.",
     stale: "Jardin d'hier : Trello ne répond pas, voici la dernière récolte.",
     week: "Semaine du",
@@ -120,6 +121,7 @@ const STRINGS = {
     lang: "Français",
     loading: "The garden is growing…",
     enter: `Explore ${AUTHOR}’s work`,
+    byline: `Thesis presented by ${AUTHOR}, defended on 28 September 2026`,
     error: "The garden could not be loaded. Please try again in a moment.",
     stale: "Yesterday's garden: Trello is not answering, here is the last harvest.",
     week: "Week of",
@@ -189,7 +191,7 @@ const STRINGS = {
 export type Strings = typeof STRINGS.fr;
 
 export const THESIS_TITLE_EN =
-  "Automatic detection of emotions in the speech of patients with acquired brain injury";
+  "Automatic detection of emotional expressions in the speech of patients with an acquired brain injury";
 
 let current: Lang = "fr";
 export function setLang(l: Lang) {

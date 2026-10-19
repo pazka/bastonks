@@ -20,8 +20,11 @@ export const TUNING = {
   /** E: offered only near a tree — the pigeon swoops to the closest Branch within this range (unfound first). */
   swoopRange: 4.5,
 
-  // Flyover durations (s)
-  flyoverFirst: 24,
-  flyoverReturn: 12,
-  flyoverReduced: 5,
+  // Flyover durations (s), each with `introReadExtra` seconds more to read the title
+  flyoverFirst: 29,
+  flyoverReturn: 17,
+  flyoverReduced: 10,
+  introReadExtra: 5,
+  /** Spiral speed (turns per second): one turn takes 30 s. */
+  introTurnRate: 1 / 30,
 } as const;

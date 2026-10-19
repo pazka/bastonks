@@ -3,7 +3,7 @@
 
 import type { Species } from "../shared/types.ts";
 import type { WorldItem } from "./forest.ts";
-import { AUTHOR, fmtDate, fmtInt, lang, t, THESIS_TITLE, THESIS_TITLE_EN } from "./i18n.ts";
+import { fmtDate, fmtInt, lang, t, THESIS_TITLE, THESIS_TITLE_EN } from "./i18n.ts";
 import { cssHex, trelloColor } from "./palette.ts";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -85,7 +85,7 @@ export class UI {
   showTitles(show: boolean) {
     $("flyover").hidden = false;
     $("thesis-title").textContent = THESIS_TITLE;
-    $("author").textContent = AUTHOR;
+    $("author").textContent = t().byline;
     $("skip").textContent = t().skip;
     document.querySelector(".title-card")!.classList.toggle("on", show);
   }
@@ -322,7 +322,7 @@ export class UI {
     const title = el("p", "thesis", `« ${THESIS_TITLE} »`);
     const parts: HTMLElement[] = [el("h2", "", s.about), title];
     if (lang() === "en") parts.push(el("p", "small", THESIS_TITLE_EN));
-    parts.push(el("p", "", `${AUTHOR}`));
+    parts.push(el("p", "", s.byline));
     for (const p of s.aboutBody) parts.push(el("p", "", p));
     parts.push(el("h3", "", s.credits));
     for (const p of s.creditsBody) parts.push(el("p", "small", p));

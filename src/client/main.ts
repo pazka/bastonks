@@ -76,14 +76,13 @@ function makeSky(radius: number) {
 }
 
 /**
- * The intro: one slow spiral descending onto the pigeon. Starts high above, turns ~1.6 times around the
+ * The intro: one slow spiral descending onto the pigeon. Starts high above, turns `turns` times around the
  * starting point while coming down and closer, and ends exactly at the chase camera's first position.
  */
-function spiralIntro(layout: Layout, start: THREE.Vector3, end: THREE.Vector3) {
+function spiralIntro(layout: Layout, start: THREE.Vector3, end: THREE.Vector3, turns: number) {
   const dx = end.x - start.x, dz = end.z - start.z;
   const endAngle = Math.atan2(dx, dz), endR = Math.hypot(dx, dz);
   const R0 = layout.radius * 0.8, H0 = layout.radius * 0.85;
-  const turns = 1.6;
   const pos = new THREE.Vector3(), look = new THREE.Vector3();
   return (u: number) => {
     const e = u * u * (3 - 2 * u); // ease in and out
@@ -277,12 +276,14 @@ async function main() {
   player.pos.copy(startPos);
   chase.snapBehind(startPos, layout.startYaw);
   const camEnd = camera.position.clone();
-  const intro = spiralIntro(layout, startPos, camEnd);
   const flyDuration = reducedMotion
     ? TUNING.flyoverReduced
     : progress.visits > 0
     ? TUNING.flyoverReturn
     : TUNING.flyoverFirst;
+  const intro = spiralIntro(layout, startPos, camEnd, TUNING.introTurnRate * flyDuration);
+  // the title stays up `introReadExtra` seconds longer than the spiral alone would keep it
+  const titlesUntil = (0.62 * (flyDuration - TUNING.introReadExtra) + TUNING.introReadExtra) / flyDuration;
   let flyT = 0;
   let inFlyover = true;
   input.enabled = false;
@@ -449,7 +450,7 @@ async function main() {
       const c = intro(u);
       camera.position.copy(c.pos);
       camera.lookAt(c.look);
-      if (u > 0.62) ui.showTitles(false);
+      if (u > titlesUntil) ui.showTitles(false);
       if (u >= 1) endFlyover();
     }
 

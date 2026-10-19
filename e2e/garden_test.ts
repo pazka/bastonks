@@ -74,7 +74,7 @@ Deno.test({
       await page.waitForFunction(() => (globalThis as any).__bastonks.entered === true);
       await page.waitForSelector(".title-card.on", { timeout: 10_000 });
       const title = await page.textContent("#thesis-title");
-      assert(title?.includes("Détection automatique des émotions"));
+      assert(title?.includes("Détection automatique des expressions émotionnelles"));
       assertEquals(await page.locator(".title-card blockquote").count(), 0); // the epigraph lives on the Path now
       await page.click("#skip");
       await page.waitForFunction(() => (globalThis as any).__bastonks.flyoverDone === true, null, {
