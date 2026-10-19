@@ -45,3 +45,12 @@ an app that follows it deploys first try. Values already fixed for this project:
 - `bastonks.env`: you may create it from `.env.example` BEFORE any secret is in it; after the owner
   has filled it, **never print, cat, grep, copy or edit it**. If a variable is wrong, name it to the
   owner and stop. Never run owner-only interactive scripts; never delete the `bastonks-data` volume.
+
+## Maintenance (autonomous agent, after v1.0)
+Keep Deno, base images, `three` and Actions current **without changing behaviour**. Read `TESTING.md`.
+- Gate = `ci` green (test + image jobs). Work on `agent/<topic>` branches (CI runs, nothing is pushed
+  to ghcr). Don't push to `main`, tag, or release unless the owner asks: a release deploys to production.
+- Dependabot PRs: green → summarise risk in a PR comment; red → reproduce per TESTING.md and fix with the
+  smallest change. A Deno base bump fails `pins_test.ts` by design: run `scripts/sync-deno-pin.sh`.
+  `deno.json` imports are bumped by hand (`deno outdated`), honouring the 7-day minimum age.
+- Never weaken or delete a test to get green; if behaviour must change, ask the owner.
