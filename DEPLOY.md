@@ -63,7 +63,7 @@ and test the GitHub path once: Actions → deploy → `status`.
 | `TRELLO_TOKEN` | empty (**required**) | owner, `scripts/set-trello.sh` | Trello token, **read-only** scope. |
 | `TRELLO_BOARD_ID` | empty (**required**) | owner, `scripts/set-trello.sh` | The thesis board (short code or id). Never logged, never sent to the browser. |
 | `APP_DATA_DIR` | `/data` | template | Snapshot, image cache, id salt (`/data/.secrets/id-salt`, generated once). |
-| `APP_FETCH_TIMEOUT_MS` | `3000` | template | How long a visit waits for Trello before the last good snapshot is served (stale). |
+| `APP_FETCH_TIMEOUT_MS` | `3000` | template | How long a visit waits for Trello before the last good snapshot is served (flagged stale only if Trello errors or the snapshot is over 1 h old). |
 | `APP_MIN_REFETCH_S` | `10` | template | Visits within this many seconds of a successful fetch share it (Trello rate limit). |
 | `APP_LOG_LEVEL` | `info` | template | `debug`, `info`, `warn`, `error`. |
 | `APP_BASE_URL` | `https://bastonks.hosh.it` | template | Public URL (informative). |
@@ -130,8 +130,10 @@ creation, not more than 45 days after their last activity); a wrong year is repa
 meteorological seasons.
 
 **Refresh per visit:** each `/api/world` starts one board fetch (concurrent visits share it); a visit waits up to
-`APP_FETCH_TIMEOUT_MS`, then the last good snapshot is served (`stale: true`) while the fetch finishes in the
-background. Visits within `APP_MIN_REFETCH_S` of a successful fetch reuse it (Trello allows ~100 requests / 10 s
+`APP_FETCH_TIMEOUT_MS`, then the last good snapshot is served while the fetch finishes in the
+background. It is flagged `stale: true` only when Trello's last answer was an error or the snapshot is more
+than an hour old (a large board that just takes longer than the wait is not stale); the visitor then sees a
+5-second notice, and the About sheet keeps the line. Visits within `APP_MIN_REFETCH_S` of a successful fetch reuse it (Trello allows ~100 requests / 10 s
 per token). The board call uses Trello's nested resources (`lists=all`, `cards=all` with attachments,
 `checklists=all`, `labels=all`); Trello's docs site was not reachable from the build sandbox, so verify the first
 real fetch on the box: `healthz.trees`/`branches` should match the board (~165 Trees, ~2 100 Branches).

@@ -133,6 +133,7 @@ export class UI {
     setTimeout(() => ($("flyover").hidden = true), 1200);
     $("skip").hidden = true;
     $("hud").hidden = false;
+    this.flashStale();
   }
 
   // ---- hud ----------------------------------------------------------------------------------------------
@@ -173,9 +174,23 @@ export class UI {
     $("counter").textContent = text;
   }
 
-  setStale(stale: boolean) {
-    $("stale").hidden = !stale;
+  private stale: string | null = null; // date of the old snapshot being served, if any
+  private staleShown = false;
+
+  /** An old snapshot (Trello not answering): a 5-second notice once the HUD appears, and a line in About. */
+  setStale(stale: boolean, at: string) {
+    this.stale = stale ? at : null;
     $("stale").textContent = t().stale;
+    this.renderAbout();
+  }
+
+  private flashStale() {
+    if (!this.stale || this.staleShown) return;
+    this.staleShown = true;
+    const n = $("stale");
+    n.hidden = false;
+    setTimeout(() => n.classList.add("out"), 4400);
+    setTimeout(() => (n.hidden = true), 5000);
   }
 
   /**
@@ -327,6 +342,7 @@ export class UI {
     parts.push(el("h3", "", s.credits));
     for (const p of s.creditsBody) parts.push(el("p", "small", p));
     parts.push(el("p", "small", s.progressNote));
+    if (this.stale) parts.push(el("p", "small", `${s.stale} (${fmtDate(this.stale)})`));
     b.replaceChildren(...parts);
   }
 

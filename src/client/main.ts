@@ -230,7 +230,7 @@ async function main() {
   const refreshTexts = () => {
     ui.refreshTexts(progress.muted);
     refreshCounter();
-    ui.setStale(world.stale);
+    ui.setStale(world.stale, world.snapshotAt);
   };
   refreshTexts();
   ui.onLang = () => {

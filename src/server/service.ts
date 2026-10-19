@@ -1,6 +1,8 @@
 // Refresh per visit (BRIEF §1): each world request triggers one board fetch, shared by concurrent visits.
 // A visit waits up to `fetchTimeoutMs`; after that (or on any Trello error) the last good snapshot is
-// served, flagged `stale`. The fetch keeps running in the background and refreshes the next visit.
+// served. The fetch keeps running in the background and refreshes the next visit. The world is flagged
+// `stale` only when it really is old: Trello's last answer was an error, or the snapshot is older than
+// `staleAfterS` — a big board that merely takes longer than the visit's wait is not "yesterday's garden".
 
 import { buildWorld } from "./classify.ts";
 import { cleanBoard, type CleanSnapshot, idPairs, type ImageSources, makeHasher } from "./clean.ts";
@@ -17,6 +19,8 @@ export interface ServiceDeps {
   minRefetchS: number;
   /** Hard limit of one background board fetch. */
   backgroundTimeoutMs?: number;
+  /** A snapshot served without a fresh fetch is flagged stale past this age (default 1 h). */
+  staleAfterS?: number;
   now?: () => number;
 }
 
@@ -45,6 +49,7 @@ export class WorldService {
   private inflight: Promise<boolean> | null = null;
   private lastOutcome: FetchOutcome | "none" = "none";
   private lastError: string | undefined;
+  private lastFetchFailed = false; // outcome of the last completed fetch (a visit's timeout is not one)
   private rendered = new Map<boolean, Rendered>();
   private imageFetches = new Map<string, Promise<Uint8Array<ArrayBuffer> | null>>();
   private imagesCached = 0;
@@ -101,6 +106,7 @@ export class WorldService {
       this.snapshotAt = this.now();
       this.lastOutcome = "ok";
       this.lastError = undefined;
+      this.lastFetchFailed = false;
       log("info", "trello fetch ok", {
         ms: this.now() - t0,
         lists: snapshot.lists.length,
@@ -113,6 +119,7 @@ export class WorldService {
       const kind = e instanceof TrelloError ? e.message : "trello error";
       this.lastOutcome = e instanceof TrelloError && e.kind === "timeout" ? "timeout" : "error";
       this.lastError = kind;
+      this.lastFetchFailed = true;
       // Only the reduced kind is logged: raw errors can contain the request URL (board id).
       log("warn", "trello fetch failed", { ms: this.now() - t0, error: kind });
       return false;
@@ -141,7 +148,8 @@ export class WorldService {
         fresh = false;
       } else fresh = r;
     }
-    return this.render(!fresh);
+    const old = this.now() - this.snapshotAt > (this.d.staleAfterS ?? 3600) * 1000;
+    return this.render(!fresh && (this.lastFetchFailed || old));
   }
 
   render(stale: boolean): Rendered | null {

@@ -78,7 +78,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* HUD */
 .hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
 .counter { position: absolute; left: max(14px, env(safe-area-inset-left)); top: max(12px, env(safe-area-inset-top)); font-size: .86rem; color: var(--ink); background: rgba(255, 250, 240, .72); padding: .35em .8em; border-radius: 999px; backdrop-filter: blur(4px); }
-.stale { position: absolute; left: 50%; top: max(12px, env(safe-area-inset-top)); transform: translateX(-50%); font-size: .78rem; color: var(--muted); background: rgba(255, 250, 240, .72); padding: .3em .8em; border-radius: 999px; max-width: 70vw; text-align: center; }
+.stale { position: absolute; left: 50%; top: max(12px, env(safe-area-inset-top)); transform: translateX(-50%); font-size: .78rem; color: var(--muted); background: rgba(255, 250, 240, .72); padding: .3em .8em; border-radius: 999px; max-width: 70vw; text-align: center; transition: opacity .6s ease; animation: rise .5s ease; }
+.stale.out { opacity: 0; }
 .hud-buttons { position: absolute; right: max(12px, env(safe-area-inset-right)); top: max(10px, env(safe-area-inset-top)); display: flex; gap: 6px; pointer-events: auto; }
 .pill { background: rgba(255, 250, 240, .82); border: 0; border-radius: 999px; padding: .38em .85em; font-size: .82rem; box-shadow: 0 2px 8px rgba(43, 42, 51, .12); }
 .pill.icon { width: 2.2em; padding: .38em 0; text-align: center; }

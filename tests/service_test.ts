@@ -17,7 +17,7 @@ interface Fake {
   imageCalls: number;
 }
 
-async function setup(fake: Fake, dir?: string, fetchTimeoutMs = 2000) {
+async function setup(fake: Fake, dir?: string, fetchTimeoutMs = 2000, now?: () => number) {
   const d = dir ?? await Deno.makeTempDir();
   const svc = new WorldService({
     store: new Store(d),
@@ -38,6 +38,7 @@ async function setup(fake: Fake, dir?: string, fetchTimeoutMs = 2000) {
     },
     fetchTimeoutMs,
     minRefetchS: 0,
+    now,
   });
   await svc.init();
   return { svc, dir: d };
@@ -74,7 +75,7 @@ Deno.test("visit: Trello down / 401 → last good snapshot, flagged stale; resta
   assertEquals(r2.world.trees[0].branches[0].id, good!.world.trees[0].branches[0].id);
 });
 
-Deno.test("visit: slow Trello → served within the timeout as stale, then refreshed in the background", async () => {
+Deno.test("visit: slow Trello → recent snapshot served within the timeout, not stale; refreshed in the background", async () => {
   const fake: Fake = { mode: "ok", calls: 0, imageCalls: 0 };
   const { svc } = await setup(fake, undefined, 100);
   await svc.visit();
@@ -83,10 +84,23 @@ Deno.test("visit: slow Trello → served within the timeout as stale, then refre
   const t0 = performance.now();
   const r = await svc.visit();
   assert(performance.now() - t0 < 250, "waited too long");
-  assert(r?.world.stale);
+  assert(r && !r.world.stale, "a big board that is merely slow is not yesterday's garden");
   assertEquals(svc.health().last_fetch, "timeout");
   await svc.settle();
   assertEquals(svc.health().last_fetch, "ok");
+});
+
+Deno.test("visit: slow Trello and a snapshot older than an hour → stale", async () => {
+  const fake: Fake = { mode: "ok", calls: 0, imageCalls: 0 };
+  let clock = Date.now();
+  const { svc } = await setup(fake, undefined, 100, () => clock);
+  await svc.visit();
+  await svc.settle();
+  clock += 2 * 3600_000;
+  fake.mode = "slow";
+  const r = await svc.visit();
+  assert(r?.world.stale);
+  await svc.settle();
 });
 
 Deno.test("visit: no snapshot and Trello down → null (503)", async () => {
