@@ -15,7 +15,7 @@ jobs:
   shoot:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Install Deno 2.9.7 (pinned, checksum-verified)
         run: |
           set -euo pipefail
