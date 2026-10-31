@@ -144,7 +144,7 @@ goal). Feel values (speeds, ranges, intro length): `src/client/tuning.ts`.
 **Supply chain:** third-party dependencies are `three@0.186.1` (runtime, bundled), `@types/three` (types) and
 `playwright-core@1.64.0` (e2e only, owner-approved; never in the image), plus Deno's first-party `@std/http` /
 `@std/assert`. `deno.lock` is frozen, `minimumDependencyAge` P7D, `.npmrc` `trust-policy=no-downgrade`, no
-lifecycle scripts. Deno 2.9.7 is installed in CI from the GitHub release with a pinned SHA-256; the `denort`
+lifecycle scripts. Deno 2.9.8 is installed in CI from the GitHub release with a pinned SHA-256; the `denort`
 runtime that `deno compile` wraps is likewise pinned by checksum in the Dockerfile. Note: `deno bundle` fetches
 Deno's own pinned esbuild (0.25.5) from npm on first use — part of the Deno toolchain chosen in ADR 0001.
 Base images (`denoland/deno`, `gcr.io/distroless/cc-debian12:nonroot`) are pinned by digest; Dependabot proposes
