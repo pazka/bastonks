@@ -1,7 +1,7 @@
 # bastonks — one static binary (deno compile) in a distroless image, uid 10001. Box contract rules 1–4, 12.
 # Base images pinned by digest (Dependabot keeps them fresh, with a cooldown).
 
-FROM denoland/deno:debian-2.9.7@sha256:fa335acdf6b72106eda2cb6a8cb5f4187e7630e357467489db4b2e7352d5e432 AS build
+FROM denoland/deno:debian-2.9.8@sha256:a0d88a7fcbd44f062cba2748e19df67d30290ad12aa203c7c1e0b12462c483f0 AS build
 WORKDIR /src
 # Dependencies first (frozen lockfile, minimum age, no install scripts — see deno.json / .npmrc).
 # The optional `ca` secret is only for builders behind a TLS-intercepting proxy; CI does not use it.
