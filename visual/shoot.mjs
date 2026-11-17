@@ -171,4 +171,6 @@ phone.close();
 writeFileSync(join(OUT, "report.json"), JSON.stringify(report, null, 2));
 console.log(`\n${report.shots.length} shots, ${report.failures.length} failure(s)`);
 for (const f of report.failures) console.log(`  - ${f.name}: ${f.reason}`);
+// process.exit() does not wait for a piped stdout: drain it first, or the last printed shot is cut off
+await new Promise((r) => process.stdout.write("", r));
 process.exit(report.failures.length ? 1 : 0);
