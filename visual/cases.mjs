@@ -63,6 +63,8 @@ export const CASES = [
     steps: async (p) => {
       await enter(p);
       await must(p, `!!document.querySelector(".title-card.on")`, "the titles");
+      // the loading screen lifts away by an animation (frozen by the harness) and is removed after 2.6 s
+      await must(p, `!document.querySelector("#loading")`, "the loading screen to leave", 10000);
     },
   },
   // G1: the garden after the intro: counter, HUD buttons (and touch controls on the phone)
