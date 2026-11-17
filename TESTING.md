@@ -35,6 +35,42 @@ creates its state on an empty `/data` under a read-only rootfs. Only `main` push
   pinned by digest; exact `deno.json` imports, frozen lock, no install scripts.
 - `e2e/garden_test.ts` — headless browser on the synthetic board.
 
+## Visual use cases
+
+`visual/run.sh [IMAGE] [--update]` (CI: `image` job, step "Visual regression") seeds the synthetic board
+(`scripts/seed.ts`), starts the image hardened with no Trello credentials (it serves that snapshot, stale),
+and shoots each case below at **1400, 1024 and 390 px** (390 = a touch phone without a mouse) in a fresh
+browser (no saved progress, French, UTC). It compares each shot with `visual/baseline/<id>-<width>.png`:
+a shot fails when more than 0.1 % of its pixels differ by more than 24 on a channel. Shots, diffs and
+`report.json` are uploaded as the `visual-<sha>` artifact; with `VISUAL_PRINT_NEW=1` a failing shot is also
+printed in the log, and `node visual/from-log.mjs <log>` takes it back as a file. Node built-ins and the
+runner's Chrome only (`visual/cdp.mjs`, same harness as pazka/plats); no package is installed.
+
+**The 3D garden itself is not compared**: software WebGL with a running clock is not reproducible pixel for
+pixel, so `#scene` is hidden before each shot and the cases compare the interface drawn over it. That the
+garden renders and plays is the e2e test's job (`e2e/garden_test.ts`).
+
+Always masked (layout kept, content hidden), because timers or the pigeon's position move them:
+`#stale` (5 s banner), `#fs-offer` (12 s), `#toast`, `#celebrate`, `#prompt`, `.leaf`.
+
+| id | state | how it is reached |
+|---|---|---|
+| L1-enter | world built, the large "enter" button | open `/`, wait for `__bastonks.ready` |
+| L2-load-error | the world cannot be loaded: error text on the loading screen | `/api/world` answers 503 (intercepted in the browser) |
+| T1-titles | flyover titles: thesis title, byline, "skip" | click the enter button |
+| G1-garden | after the intro: counter, HUD buttons; on the phone the touch stick and buttons and the fullscreen button | enter, then "skip" |
+| G2-panel | a Seed Pot's card in the side panel (kicker, title, labels, dates), counter at 1; on the phone over the touch buttons | G1, then `__bastonks.teleport(0, "pot")` |
+| G3-about | the About dialog; its last line (the snapshot's date, from the seed) is masked | G1, then the About button |
+| G4-help | the Controls dialog: keys and mouse options (desktop), touch controls (phone) | G1, then the "?" button |
+| G5-english-about | the interface in English, About dialog | G1, the language button, then About |
+
+Not covered visually: the garden (WebGL, see above), the Branch panel reached by flying (the e2e covers it
+with the autopilot), the fullscreen offer (timer), sound.
+
+Update the baselines only in a PR that says the visual change is wanted: `visual/run.sh IMAGE --update`
+(from the CI Chrome: take the shots from the artifact or with `visual/from-log.mjs`), and look at every
+picture before committing it.
+
 ## Deliberately not covered
 
 - The real Trello API (no keys in CI; the synthetic board has the real board's shape).
