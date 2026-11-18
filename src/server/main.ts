@@ -3,17 +3,21 @@
 import { loadAssets } from "./assets.ts";
 import { loadConfig } from "./config.ts";
 import { makeHandler } from "./http.ts";
-import { log, setLogLevel } from "./log.ts";
+import { logShutdown, logStartup } from "./lifecycle.ts";
+import { setLogLevel, setLogVersion } from "./log.ts";
 import { WorldService } from "./service.ts";
 import { runSmoke } from "./smoke.ts";
 import { Store } from "./store.ts";
 import { fetchBoard, fetchImage } from "./trello.ts";
 
 async function serve() {
+  const t0 = performance.now();
   const cfg = loadConfig();
   setLogLevel(cfg.logLevel);
+  setLogVersion(cfg.version);
+  const store = new Store(cfg.dataDir);
   const svc = new WorldService({
-    store: new Store(cfg.dataDir),
+    store,
     fetchBoard: (signal) => fetchBoard(cfg.trello, signal),
     fetchImage: (url, signal) => fetchImage(cfg.trello, url, signal),
     fetchTimeoutMs: cfg.fetchTimeoutMs,
@@ -25,7 +29,7 @@ async function serve() {
   const ctl = new AbortController();
   for (const sig of ["SIGTERM", "SIGINT"] as const) {
     Deno.addSignalListener(sig, () => {
-      log("info", "shutdown", { signal: sig });
+      logShutdown(sig, performance.now() - t0);
       ctl.abort();
     });
   }
@@ -33,7 +37,7 @@ async function serve() {
     hostname: "0.0.0.0",
     port: cfg.port,
     signal: ctl.signal,
-    onListen: ({ port }) => log("info", "listening", { port }),
+    onListen: ({ port }) => void logStartup(cfg, store, port),
   }, handler);
   await server.finished;
 }

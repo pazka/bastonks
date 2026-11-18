@@ -69,7 +69,10 @@ export class WorldService {
     if (snap) {
       this.setSnapshot(snap);
       this.snapshotAt = Date.parse(snap.fetchedAt) || 0;
-      log("info", "snapshot loaded", { cards: snap.cards.length, at: snap.fetchedAt });
+      log("info", "snapshot_loaded", "stored snapshot loaded", {
+        cards: snap.cards.length,
+        at: snap.fetchedAt,
+      });
     }
   }
 
@@ -92,6 +95,7 @@ export class WorldService {
     const t0 = this.now();
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), this.d.backgroundTimeoutMs ?? 20_000);
+    log("info", "trello_fetch_start", "fetching the board from Trello");
     try {
       const raw = await this.d.fetchBoard(ctl.signal);
       const hash = await makeHasher(this.salt!, idPairs(raw));
@@ -107,8 +111,8 @@ export class WorldService {
       this.lastOutcome = "ok";
       this.lastError = undefined;
       this.lastFetchFailed = false;
-      log("info", "trello fetch ok", {
-        ms: this.now() - t0,
+      log("info", "trello_fetch_done", "board fetched", {
+        dur_ms: Math.round(this.now() - t0),
         lists: snapshot.lists.length,
         cards: snapshot.cards.length,
         changed,
@@ -121,7 +125,10 @@ export class WorldService {
       this.lastError = kind;
       this.lastFetchFailed = true;
       // Only the reduced kind is logged: raw errors can contain the request URL (board id).
-      log("warn", "trello fetch failed", { ms: this.now() - t0, error: kind });
+      log("warn", "trello_fetch_failed", "Trello did not answer; the last snapshot is served", {
+        dur_ms: Math.round(this.now() - t0),
+        error: kind,
+      });
       return false;
     } finally {
       clearTimeout(timer);
@@ -208,7 +215,9 @@ export class WorldService {
         this.imagesCached++;
         return bytes;
       } catch (e) {
-        log("warn", "image fetch failed", { error: e instanceof TrelloError ? e.message : "error" });
+        log("warn", "image_fetch_failed", "an image preview could not be downloaded", {
+          error: e instanceof TrelloError ? e.message : "error",
+        });
         return null;
       } finally {
         clearTimeout(timer);
@@ -221,11 +230,33 @@ export class WorldService {
 
   private async prefetchImages() {
     let cached = 0;
+    const missing: string[] = [];
     for (const id of this.images.keys()) {
       if (await this.d.store.hasImage(id)) cached++;
-      else if (await this.download(id)) cached++;
+      else missing.push(id);
+    }
+    // a job line only when there is something to download (a refresh with every image cached is no job)
+    const t0 = this.now();
+    if (missing.length) {
+      log("info", "image_prefetch_start", "downloading image previews", {
+        images: this.images.size,
+        missing: missing.length,
+      });
+    }
+    let failed = 0;
+    for (const id of missing) {
+      if (await this.download(id)) cached++;
+      else failed++;
     }
     this.imagesCached = cached;
+    if (missing.length) {
+      log(failed ? "warn" : "info", "image_prefetch_done", "image previews downloaded", {
+        dur_ms: Math.round(this.now() - t0),
+        downloaded: missing.length - failed,
+        failed,
+        cached,
+      });
+    }
   }
 
   /** Waits for background work (tests). */

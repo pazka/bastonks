@@ -34,6 +34,25 @@ creates its state on an empty `/data` under a read-only rootfs. Only `main` push
   download and every workflow install; one checksum; the test runner is that Deno; every base image
   pinned by digest; exact `deno.json` imports, frozen lock, no install scripts.
 - `e2e/garden_test.ts` — headless browser on the synthetic board.
+- `tests/log_test.ts` — the logging standard (below): startup and shutdown lines, an error line with `err`,
+  which requests are logged, the Trello and image job lines, no Trello URL, key, token or id in any line.
+
+## Logs
+
+hosh-management `AGENTS.md` section 11. stdout only, one JSON object per line: `ts` (UTC, ms), `level`,
+`service` (`bastonks`), `version` (`BASTONKS_VERSION`, set by the image from its `VERSION` build arg), `event`
+(snake_case), `msg`.
+- `startup` (port, `data_dir_writable`, `log_level`, the names of the config variables that are set, never
+  their values; `error` level when `/data` cannot be written) and `shutdown` (signal).
+- Requests (`http`): only 5xx (`error`) and anything slower than 1 s (`warn`) at `info`; at `debug` every
+  request, `/healthz` included. Fields `req_id` (the edge's `X-Request-Id` when it is a plain token, else
+  generated, and always returned in the `x-request-id` header), `method`, `route` (template: `/img/:id`,
+  `/:asset`, `/:other`…, never the raw path or query), `status`, `dur_ms`. An unhandled error is one
+  `request_failed` line with `err` {type, message, stack}, every http(s) URL replaced by `<url>`.
+- Jobs: `trello_fetch_start` then `trello_fetch_done` (`dur_ms`, lists, cards, changed) or
+  `trello_fetch_failed` (`warn`, `dur_ms`, the reduced error kind only); `image_prefetch_start` /
+  `image_prefetch_done` (`dur_ms`, downloaded, failed, cached) when previews are missing; `snapshot_loaded`.
+- `APP_LOG_LEVEL` (default `info`). Never logged: Trello key, token, board or card ids, URLs, IPs.
 
 ## Visual use cases
 
