@@ -18,6 +18,18 @@ export class Store {
     await Deno.mkdir(this.imgDir, { recursive: true });
   }
 
+  /** True when the data dir can be written (a probe file is written then removed). Never throws. */
+  async probe(): Promise<boolean> {
+    const p = `${this.dir}/.write-probe-${crypto.randomUUID()}`;
+    try {
+      await Deno.writeFile(p, new Uint8Array());
+      await Deno.remove(p);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   /** The salt of opaque ids, generated once (box contract rule 6: app-generated secrets in /data/.secrets). */
   async salt(): Promise<Uint8Array<ArrayBuffer>> {
     const p = `${this.dir}/.secrets/id-salt`;

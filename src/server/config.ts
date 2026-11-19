@@ -11,6 +11,7 @@ export const ENV_VARS = [
   "APP_LOG_LEVEL",
   "APP_BASE_URL",
   "APP_TRUSTED_PROXIES",
+  "BASTONKS_VERSION",
 ] as const;
 
 export interface Config {
@@ -22,6 +23,8 @@ export interface Config {
   /** Visits closer than this to the last successful fetch reuse it (protects the Trello rate limit). */
   minRefetchS: number;
   logLevel: string;
+  /** The release tag (the image sets it from its VERSION build arg), on every log line. */
+  version: string;
 }
 
 function int(v: string | undefined, def: number, lo: number, hi: number): number {
@@ -41,5 +44,11 @@ export function loadConfig(env: (k: string) => string | undefined = (k) => Deno.
     fetchTimeoutMs: int(env("APP_FETCH_TIMEOUT_MS"), 3000, 200, 30000),
     minRefetchS: int(env("APP_MIN_REFETCH_S"), 10, 0, 3600),
     logLevel: env("APP_LOG_LEVEL") || "info",
+    version: env("BASTONKS_VERSION") || "dev",
   };
+}
+
+/** The names of the variables that are set, never their values (the startup line). */
+export function configNamesSet(env: (k: string) => string | undefined = (k) => Deno.env.get(k)): string[] {
+  return ENV_VARS.filter((k) => (env(k) ?? "") !== "");
 }

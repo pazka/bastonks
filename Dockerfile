@@ -28,7 +28,8 @@ LABEL org.opencontainers.image.title="bastonks" \
       org.opencontainers.image.revision="${REVISION}"
 COPY --from=build --chown=10001:10001 /out/data /data
 COPY --from=build /src/dist/bastonks /app/bastonks
-ENV APP_DATA_DIR=/data
+ENV APP_DATA_DIR=/data \
+    BASTONKS_VERSION=${VERSION}
 USER 10001:10001
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 CMD ["/app/bastonks", "healthcheck"]

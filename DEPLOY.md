@@ -65,7 +65,7 @@ and test the GitHub path once: Actions → deploy → `status`.
 | `APP_DATA_DIR` | `/data` | template | Snapshot, image cache, id salt (`/data/.secrets/id-salt`, generated once). |
 | `APP_FETCH_TIMEOUT_MS` | `3000` | template | How long a visit waits for Trello before the last good snapshot is served (flagged stale only if Trello errors or the snapshot is over 1 h old). |
 | `APP_MIN_REFETCH_S` | `10` | template | Visits within this many seconds of a successful fetch share it (Trello rate limit). |
-| `APP_LOG_LEVEL` | `info` | template | `debug`, `info`, `warn`, `error`. |
+| `APP_LOG_LEVEL` | `info` | template | `debug`, `info`, `warn`, `error`. `debug` logs every request; `info` logs only 5xx and slow requests (JSON lines, TESTING.md "Logs"). |
 | `APP_BASE_URL` | `https://bastonks.hosh.it` | template | Public URL (informative). |
 | `APP_TRUSTED_PROXIES` | `127.0.0.0/8,::1/128,172.16.0.0/12` | template | Box standard. The app never uses client IPs (no X-Forwarded-For needed). |
 | `APP_PORT` | `8000` (unset) | — | Listening port inside the container; leave unset. |
@@ -105,7 +105,7 @@ never prints card content. CI runs the same smoke against the hardened container
   (Trello API, image previews and their storage redirect; listening on :8000; the `healthcheck`/`smoke` subcommands
   talk to 127.0.0.1:8000);
 - `--allow-read=/data --allow-write=/data` (the front-end is embedded in the binary);
-- `--allow-env=TRELLO_KEY,TRELLO_TOKEN,TRELLO_BOARD_ID,APP_DATA_DIR,APP_PORT,APP_FETCH_TIMEOUT_MS,APP_MIN_REFETCH_S,APP_LOG_LEVEL,APP_BASE_URL,APP_TRUSTED_PROXIES`;
+- `--allow-env=TRELLO_KEY,TRELLO_TOKEN,TRELLO_BOARD_ID,APP_DATA_DIR,APP_PORT,APP_FETCH_TIMEOUT_MS,APP_MIN_REFETCH_S,APP_LOG_LEVEL,APP_BASE_URL,APP_TRUSTED_PROXIES,BASTONKS_VERSION`;
 - never `--allow-run`, `--allow-ffi`, `--allow-sys`.
 
 **Residual risk (accepted by the owner):** compromised code inside the app could still exfiltrate data through the

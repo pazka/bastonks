@@ -3,7 +3,7 @@
 import { ifNoneMatch } from "@std/http/etag";
 import type { WorldService } from "./service.ts";
 import { sniffImage } from "./store.ts";
-import { log } from "./log.ts";
+import { errField, log, logEnabled } from "./log.ts";
 
 export interface Asset {
   type: string;
@@ -48,22 +48,52 @@ const json = (v: unknown, status: number, head: boolean, extra: Record<string, s
     ...extra,
   }, head);
 
+/** The route template of a path, never the raw path (image ids, probes of random URLs). */
+export function routeTemplate(path: string, assets: Map<string, Asset>): string {
+  if (path.startsWith("/img/")) return "/img/:id";
+  if (path === "/" || path === "/healthz" || path === "/api/world") return path;
+  if (assets.has(path) && path !== "/index.html") return "/:asset";
+  return "/:other";
+}
+
+/** X-Request-Id from the edge when it is a plain token, else a new one. */
+function requestId(req: Request): string {
+  const given = req.headers.get("x-request-id");
+  return given && /^[A-Za-z0-9._:-]{1,128}$/.test(given) ? given : crypto.randomUUID();
+}
+
+const SLOW_MS = 1000;
+
 export function makeHandler(svc: WorldService, assets: Map<string, Asset>) {
   return async (req: Request): Promise<Response> => {
     const t0 = performance.now();
     const url = new URL(req.url);
-    const res = await route(req, url, svc, assets).catch((e) => {
-      log("error", "handler error", { path: url.pathname, error: e instanceof Error ? e.name : "error" });
-      return json({ error: "internal" }, 500, false);
+    const reqId = requestId(req);
+    const line = (status: number) => ({
+      req_id: reqId,
+      method: req.method,
+      route: routeTemplate(url.pathname, assets),
+      status,
+      dur_ms: Math.round(performance.now() - t0),
     });
-    if (url.pathname !== "/healthz") {
-      log("info", "req", {
-        method: req.method,
-        path: url.pathname.startsWith("/img/") ? "/img/:id" : url.pathname.slice(0, 64),
-        status: res.status,
-        ms: Math.round(performance.now() - t0),
-      });
+    let res: Response;
+    try {
+      res = await route(req, url, svc, assets);
+    } catch (e) {
+      res = json({ error: "internal" }, 500, false);
+      log("error", "request_failed", "unhandled error in a request", { ...line(500), ...errField(e) });
+      res.headers.set("x-request-id", reqId);
+      return res;
     }
+    res.headers.set("x-request-id", reqId);
+    // Requests are Traefik's job: log only what matters (5xx, slow), the rest at debug. /healthz is always
+    // debug (AGENTS.md section 11), whatever its status: the probes call it every 30 s, a 503 included.
+    const l = line(res.status);
+    if (l.route === "/healthz") {
+      if (logEnabled("debug")) log("debug", "http", "request", l);
+    } else if (res.status >= 500) log("error", "http", "server error", l);
+    else if (l.dur_ms > SLOW_MS) log("warn", "http", "slow request", l);
+    else if (logEnabled("debug")) log("debug", "http", "request", l);
     return res;
   };
 }
