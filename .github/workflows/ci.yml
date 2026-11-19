@@ -63,6 +63,8 @@ jobs:
           context: .
           load: true
           tags: bastonks:scan
+          # a non-default version: the smoke below proves it reaches every log line (Dockerfile ENV -> config -> log)
+          build-args: VERSION=ci-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -88,7 +90,28 @@ jobs:
           curl -fsS http://127.0.0.1:8000/healthz | python3 -c 'import json,sys; assert json.load(sys.stdin)["status"]=="ok"'
           docker exec smoke /app/bastonks healthcheck
           docker exec smoke /app/bastonks smoke http://127.0.0.1:8000 --expect-stale
-          docker logs smoke | tail -n 20
+          # Logging standard (hosh-management AGENTS.md section 11), wired end to end in the built binary:
+          # SIGTERM (docker stop), then every stdout line is one JSON object carrying the build's version, one
+          # `startup` line (data dir writable, config names only) and one `shutdown` line with signal=SIGTERM.
+          docker stop smoke >/dev/null
+          docker logs smoke >/tmp/smoke.out 2>/tmp/smoke.err
+          tail -n 20 /tmp/smoke.out
+          VERSION="ci-${{ github.sha }}" python3 - /tmp/smoke.out <<'PY'
+          import json, os, re, sys
+          want = os.environ["VERSION"]
+          lines = [json.loads(l) for l in open(sys.argv[1]) if l.strip()]  # a non-JSON line fails here
+          assert lines and all(isinstance(l, dict) for l in lines), "every stdout line is one JSON object"
+          bad = [l.get("event") for l in lines if l.get("version") != want]
+          assert not bad, f"lines without version={want}: {bad}"
+          start = [l for l in lines if l.get("event") == "startup"]
+          assert len(start) == 1, f"{len(start)} startup lines"
+          s = start[0]
+          assert s["data_dir_writable"] is True, s
+          assert all(re.fullmatch(r"[A-Z][A-Z0-9_]*", c) for c in s["config"]), f"config holds more than names: {s['config']}"
+          stop = [l for l in lines if l.get("event") == "shutdown"]
+          assert len(stop) == 1 and stop[0]["signal"] == "SIGTERM", f"shutdown lines: {stop}"
+          print(f"log OK: {len(lines)} JSON lines, version {want}, startup + shutdown(SIGTERM)")
+          PY
           docker rm -f smoke
 
       - name: Hardening comes from the image; /data is writable under it
