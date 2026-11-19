@@ -243,6 +243,36 @@ Deno.test("log: requests are logged only when they matter; req_id is echoed or g
   assert(!raw.includes(imgId), "image id in the log");
 });
 
+Deno.test("log: /healthz is logged at debug only, a 503 (no snapshot) included", async () => {
+  const empty = await service("fail");
+  const h = makeHandler(empty, ASSETS);
+  const quiet = await capture("info", async () => {
+    const r = await h(new Request("http://x/healthz", { headers: { "x-request-id": "qa-health-503" } }));
+    assertEquals(r.status, 503);
+    assertEquals((await r.json()).status, "no_snapshot");
+  });
+  assertEquals(
+    quiet.filter((r) => r.event === "http" || r.event === "request_failed"),
+    [],
+    JSON.stringify(quiet),
+  );
+  const dbg = await capture("debug", async () => {
+    const r = await h(new Request("http://x/healthz", { headers: { "x-request-id": "qa-health-503" } }));
+    assertEquals(r.status, 503);
+  });
+  const http = dbg.filter((r) => r.event === "http");
+  assertEquals(http.length, 1, JSON.stringify(dbg));
+  checkFormat(http[0]);
+  assertEquals([http[0].level, http[0].msg, http[0].req_id, http[0].method, http[0].route, http[0].status], [
+    "debug",
+    "request",
+    "qa-health-503",
+    "GET",
+    "/healthz",
+    503,
+  ]);
+});
+
 Deno.test("log: a request slower than 1 s gives one warn line with the route template, status and dur_ms", async () => {
   const svc = await service("ok");
   await svc.refresh();

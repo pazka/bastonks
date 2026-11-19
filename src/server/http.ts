@@ -86,9 +86,12 @@ export function makeHandler(svc: WorldService, assets: Map<string, Asset>) {
       return res;
     }
     res.headers.set("x-request-id", reqId);
-    // Requests are Traefik's job: log only what matters (5xx, slow), the rest (and /healthz) at debug.
+    // Requests are Traefik's job: log only what matters (5xx, slow), the rest at debug. /healthz is always
+    // debug (AGENTS.md section 11), whatever its status: the probes call it every 30 s, a 503 included.
     const l = line(res.status);
-    if (res.status >= 500) log("error", "http", "server error", l);
+    if (l.route === "/healthz") {
+      if (logEnabled("debug")) log("debug", "http", "request", l);
+    } else if (res.status >= 500) log("error", "http", "server error", l);
     else if (l.dur_ms > SLOW_MS) log("warn", "http", "slow request", l);
     else if (logEnabled("debug")) log("debug", "http", "request", l);
     return res;

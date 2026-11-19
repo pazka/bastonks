@@ -45,7 +45,7 @@ hosh-management `AGENTS.md` section 11. stdout only, one JSON object per line: `
 - `startup` (port, `data_dir_writable`, `log_level`, the names of the config variables that are set, never
   their values; `error` level when `/data` cannot be written) and `shutdown` (signal).
 - Requests (`http`): only 5xx (`error`) and anything slower than 1 s (`warn`) at `info`; at `debug` every
-  request, `/healthz` included. Fields `req_id` (the edge's `X-Request-Id` when it is a plain token, else
+  request. `/healthz` is logged at `debug` only, whatever its status (a 503 `no_snapshot` included). Fields `req_id` (the edge's `X-Request-Id` when it is a plain token, else
   generated, and always returned in the `x-request-id` header), `method`, `route` (template: `/img/:id`,
   `/:asset`, `/:other`…, never the raw path or query), `status`, `dur_ms`. An unhandled error is one
   `request_failed` line with `err` {type, message, stack}, every http(s) URL replaced by `<url>`.
